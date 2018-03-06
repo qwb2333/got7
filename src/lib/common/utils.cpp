@@ -15,3 +15,24 @@ std::string Utils::format(const char *fmt, ...) {
 
     return std::string(buffer);
 }
+
+bool Utils::isBlank(const char &x) {
+    return (x == ' ' || x == '\n' || x == '\r' || x == '\t');
+}
+
+std::string Utils::trim(char *buffer, size_t begin, size_t end) {
+    while(begin <= end) {
+        if(isBlank(buffer[begin])) begin++;
+        else break;
+    }
+    while(begin <= end) {
+        if(isBlank(buffer[end])) end--;
+        else break;
+    }
+
+    char x = buffer[end + 1];
+    buffer[end + 1] = 0;
+    std::string str = std::string(buffer + begin);
+    buffer[end + 1] = x;
+    return str;
+}
