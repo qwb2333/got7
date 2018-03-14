@@ -1,15 +1,15 @@
 #include <cstdio>
 #include "lib/common/config.h"
-#include "lib/common/logging.h"
+#include "lib/connect/connect_pool.h"
 using namespace qwb;
 
 int main() {
     ConfigReaderPtr config = ConfigReaderFactory::createFromFile("/home/qwb/code/Clion/got7/config/inner_service.properties");
-    std::string thread_num = config->getAsString("thread_num");
-    int mainfd_num = config->getAsInt("mainfd_num");
+    int epoll_size = config->getAsInt("epoll_size", 3);
+    int thread_size = config->getAsInt("thread_size", 2);
+    int mainfd_size = config->getAsInt("mainfd_size", 2000);
 
-    LoggerPtr logger = LoggerFactory::createToStdout();
-    logger->setLevel(LogLevel::WARN);
-    printf("thread_num: %s, mainfd_num: %d\n", thread_num.c_str(), mainfd_num);
+    ConnectPollPtr pool(new ConnectPool(thread_size, epoll_size));
+    pool->join();
     return 0;
 }

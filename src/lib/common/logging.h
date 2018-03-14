@@ -24,11 +24,11 @@ namespace qwb {
         }
 
         void log(int level, const char *fmt, ...);
-#define debug(fmt, ...) log(LogLevel::DEBUG, fmt, __VA_ARGS__)
-#define info(fmt, ...) log(LogLevel::INFO, fmt, __VA_ARGS__)
-#define warn(fmt, ...) log(LogLevel::WARN, fmt, __VA_ARGS__)
-#define error(fmt, ...) log(LogLevel::ERROR, fmt, __VA_ARGS__)
-#define fatal(fmt, ...) log(LogLevel::FATAL, fmt, __VA_ARGS__)
+        void debug(const char *fmt, ...);
+        void info(const char *fmt, ...);
+        void warn(const char *fmt, ...);
+        void error(const char *fmt, ...);
+        void fatal(const char *fmt, ...);
 
     private:
         int fd;
@@ -50,4 +50,6 @@ namespace qwb {
         static LoggerPtr createToStderr(const char *name = nullptr);
         static LoggerPtr createToFile(const char *file_name, const char *name = nullptr);
     };
+
+    LoggerPtr log = LoggerFactory::createToStderr();
 }

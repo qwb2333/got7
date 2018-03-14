@@ -37,6 +37,31 @@ void Logger::log(int level, const char *fmt, ...) {
     }
 }
 
+void Logger::debug(const char *fmt, ...) {
+    va_list args;
+    log(DEBUG, fmt, args);
+}
+
+void Logger::warn(const char *fmt, ...) {
+    va_list args;
+    log(WARN, fmt, args);
+}
+
+void Logger::info(const char *fmt, ...) {
+    va_list args;
+    log(INFO, fmt, args);
+}
+
+void Logger::error(const char *fmt, ...) {
+    va_list args;
+    log(ERROR, fmt, args);
+}
+
+void Logger::fatal(const char *fmt, ...) {
+    va_list args;
+    log(FATAL, fmt, args);
+}
+
 LoggerPtr LoggerFactory::createToStdout(const char *name) {
     if(name == nullptr) {
         name = "Main";
