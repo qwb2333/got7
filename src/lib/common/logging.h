@@ -10,8 +10,8 @@ namespace qwb {
     class Logger {
     public:
         Logger(const char* name, int fd) {
-            this->name = name;
             this->fd = fd;
+            setName(name);
         }
         void setLevel(LogLevel level) {
             level = std::max(std::min(level, FATAL), DEBUG);
@@ -24,18 +24,21 @@ namespace qwb {
         }
 
         void log(int level, const char *fmt, ...);
+
         void debug(const char *fmt, ...);
         void info(const char *fmt, ...);
         void warn(const char *fmt, ...);
         void error(const char *fmt, ...);
         void fatal(const char *fmt, ...);
 
+        void setName(const char* name);
     private:
         int fd;
         int bufSize = 4096;
         const char* name;
+        std::string string_name;
 
-        LogLevel level = LogLevel::ERROR;
+        LogLevel level = LogLevel::INFO;
         const char *level_name[FATAL + 1] = {"DEBUG", "INFO", "WARN", "ERROE", "FATAL"};
 
         Logger(const Logger&) = delete;
@@ -51,5 +54,5 @@ namespace qwb {
         static LoggerPtr createToFile(const char *file_name, const char *name = nullptr);
     };
 
-    LoggerPtr log = LoggerFactory::createToStderr();
+    extern thread_local LoggerPtr log;
 }
