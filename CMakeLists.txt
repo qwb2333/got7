@@ -12,8 +12,8 @@ target_link_libraries(inner_service -lpthread)
 add_executable(outer_service ${SOURCE_FILES} src/service/outer_service.cpp)
 target_link_libraries(outer_service -lpthread)
 
-add_executable(tests-connect_pool_tests ${SOURCE_FILES} src/tests/connect_pool_tests.cpp)
-target_link_libraries(tests-connect_pool_tests -lpthread)
+add_executable(tests-connect_pool ${SOURCE_FILES} src/tests/connect_pool.cpp)
+target_link_libraries(tests-connect_pool -lpthread)
 
-add_executable(tests-tcp_tests ${SOURCE_FILES} src/tests/tcp_tests.cpp)
-target_link_libraries(tests-tcp_tests -lpthread)
+add_executable(tests-tcp ${SOURCE_FILES} src/tests/tcp.cpp)
+target_link_libraries(tests-tcp -lpthread)
