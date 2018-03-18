@@ -34,13 +34,14 @@ int main() {
             int len = (int)::read(fd, buff, (unsigned)buffSize);
             if(len == 0) break;
 
+            buff[len + 1] = '\0';
             std::printf("%s", buff);
         }
         log->info("client has been closed.");
     });
 
     // 保证server已经启动
-    sleep(2);
+    sleep(1);
 
     std::thread th_client([&client](){
         log->setName("Client");
@@ -55,7 +56,7 @@ int main() {
 
         for(int i = 0; i < 10; i++) {
             sprintf(buff, "i = %d\n", i);
-            int len = (int)::write(fd, buff, strlen(buff) + 1);
+            int len = (int)::write(fd, buff, strlen(buff));
             if(len <= 0) {
                 log->info("client error.");
                 break;
