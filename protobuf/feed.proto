@@ -1,0 +1,12 @@
+package idl;
+enum FeedOption {
+    CONNECT = 0;
+    DISCONNECT = 1;
+    MESSAGE = 2;
+}
+
+message FeedAction {
+    required FeedOption option = 1;
+    required int32 fd = 2;
+    optional string data = 3;
+}
