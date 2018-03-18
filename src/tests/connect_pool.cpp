@@ -36,7 +36,7 @@ private:
 };
 
 int main() {
-    log->setLevel(LogLevel::DEBUG);
+    qwb::log->setLevel(LogLevel::DEBUG);
     ConfigReaderPtr config = ConfigReaderFactory::createFromFile("/home/qwb/code/Clion/got7/config/inner_service.properties");
 
     int epoll_size = config->getAsInt("epoll_size", 3);
@@ -48,8 +48,8 @@ int main() {
     ConnectPollPtr pool(new ConnectPool(thread_size, epoll_size));
 
     for(int i = 0; i < 5; i++) {
-        log->debug("pipe = %d", pipe(fd[i]));
-        log->debug("fd[0] = %d, fd[1] = %d", fd[i][0], fd[i][1]);
+        qwb::log->debug("pipe = %d", pipe(fd[i]));
+        qwb::log->debug("fd[0] = %d, fd[1] = %d", fd[i][0], fd[i][1]);
 
         char nameBuff[128];
         sprintf(nameBuff, "TaskTest-%d", i);
@@ -71,7 +71,7 @@ int main() {
     }
 
     saveExit(SIGINT, [fd]{
-        log->info("save exit.");
+        qwb::log->info("save exit.");
         exit(0);
     });
 
