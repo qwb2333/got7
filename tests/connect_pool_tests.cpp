@@ -8,14 +8,19 @@ using namespace qwb;
 
 class TaskTest: public TaskBase {
 public:
-    void dealReadEvent() override {
-        char buff[4096];
-        int len = (int)read(this->fd, buff, 4096);
+    void dealReadEvent(ConnectPool *manager) override {
 
-        char *end = buff + len;
-        while(buff < end && (*end == '\n' || *end == '\0')) end--;
-        *++end = '\0';
-        std::printf("name: %s, [%s]\n", name.c_str(), buff);
+        for(int i = 0; i < 64; i++) {
+            char buff[8];
+            int len = (int)read(this->fd, buff, 7);
+            if(len == -1) break;
+
+            char *end = buff + len;
+            while(buff < end && (*end == '\n' || *end == '\0')) end--;
+            *++end = '\0';
+
+            std::printf("name: %s, [%s]\n", name.c_str(), buff);
+        }
     }
 
     TaskTest() = default;
@@ -57,7 +62,7 @@ int main() {
             char buff[1024];
 
             for(int j = 0; j < 10; j++) {
-                sprintf(buff, "i = %d\n", j);
+                sprintf(buff, "123456789,i = %d,123456789\n", j);
                 write(f, buff, strlen(buff));
                 sleep(1);
             }

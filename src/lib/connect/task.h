@@ -2,16 +2,18 @@
 #include <sys/epoll.h>
 
 namespace qwb {
+    class ConnectPool;
+
     class TaskBase {
     public:
         int fd;
         virtual ~TaskBase() = default;
 
-        virtual void dealReadEvent() {
+        virtual void dealReadEvent(ConnectPool* manager) {
 
         }
 
-        virtual void dealWriteEvent() {
+        virtual void dealWriteEvent(ConnectPool* manager) {
 
         }
     };

@@ -2,12 +2,12 @@
 using namespace qwb;
 
 void ConnectPool::add(TaskPtr task, TaskEvents taskEvents) {
-    int id = hash(task->fd);
+    int id = Utils::hash(task->fd, thread_size);
     epoll_run_pool[id].add(task, taskEvents);
 }
 
 void ConnectPool::remove(const int fd) {
-    int id = hash(fd);
+    int id = Utils::hash(fd, thread_size);
     epoll_run_pool[id].remove(fd);
 }
 
@@ -17,7 +17,7 @@ ConnectPool::ConnectPool(int thread_size, int epoll_size) {
 
     epoll_run_pool.resize((unsigned)thread_size);
     for(int i = 0; i < thread_size; i++) {
-        epoll_run_pool[i].init(epoll_size, i);
+        epoll_run_pool[i].init(this, epoll_size, i);
     }
 }
 
@@ -32,15 +32,6 @@ void ConnectPool::join() {
     for(int i = 0; i < thread_size; i++) {
         thread_array[i].join();
     }
-}
-
-int ConnectPool::hash(int x) {
-    unsigned hash = 5381;
-    while (x) {
-        hash += (hash << 5) + x % 10;
-        x /= 10;
-    }
-    return (hash & 0x7FFFFFFF) % thread_size;
 }
 
 void ConnectPool::real_run(EpollRun &epollRun, int id) {

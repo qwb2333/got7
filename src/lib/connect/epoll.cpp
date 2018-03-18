@@ -1,9 +1,11 @@
 #include "epoll.h"
 using namespace qwb;
 
-void EpollManager::init(int epoll_size, int consumer_id) {
+void EpollRun::init(ConnectPool *connectPool, int epoll_size, int consumer_id) {
     this->epoll_size = epoll_size;
     this->consumer_id = consumer_id;
+    this->connectPool = connectPool;
+
     std::string name = std::string("EpollManager-" + std::to_string(consumer_id));
     log = LoggerFactory::createToStderr(name.c_str());
 
@@ -14,7 +16,7 @@ void EpollManager::init(int epoll_size, int consumer_id) {
     }
 }
 
-void EpollManager::add(TaskPtr task, TaskEvents taskEvents) {
+void EpollRun::add(TaskPtr task, TaskEvents taskEvents) {
     struct epoll_event event;
     fd_map[task->fd] = task;
     event.data.ptr = &fd_map[task->fd];
@@ -28,7 +30,7 @@ void EpollManager::add(TaskPtr task, TaskEvents taskEvents) {
     }
 }
 
-bool EpollManager::remove(const int fd) {
+bool EpollRun::remove(const int fd) {
     struct epoll_event event;
     auto iter = fd_map.find(fd);
     if(iter == fd_map.end()) {
@@ -60,11 +62,11 @@ bool EpollRun::loop_once() {
         if(events & EPOLLIN) {
             success = true;
             log->info("fd: %d, EPOLLIN", task->fd);
-            task->dealReadEvent();
+            task->dealReadEvent(this->connectPool);
         } else if(events & EPOLLOUT) {
             success = true;
             log->info("fd: %d, EPOLLOUT", task->fd);
-            task->dealWriteEvent();
+            task->dealWriteEvent(this->connectPool);
         }
 
         if(events & EPOLLHUP) {

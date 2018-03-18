@@ -36,3 +36,12 @@ std::string Utils::trim(char *buffer, size_t begin, size_t end) {
     buffer[end + 1] = x;
     return str;
 }
+
+int Utils::hash(int x, int mod) {
+    unsigned hash = 5381;
+    while (x) {
+        hash += (hash << 5) + x % 10;
+        x /= 10;
+    }
+    return (hash & 0x7FFFFFFF) % mod;
+}
