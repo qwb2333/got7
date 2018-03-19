@@ -34,16 +34,19 @@ void  protobuf_AddDesc_feed_2eproto();
 void protobuf_AssignDesc_feed_2eproto();
 void protobuf_ShutdownFile_feed_2eproto();
 
+class FeedRemoteInfo;
 class FeedAction;
 
 enum FeedOption {
   CONNECT = 0,
   DISCONNECT = 1,
-  MESSAGE = 2
+  MESSAGE = 2,
+  PIPE = 3,
+  ACK = 4
 };
 bool FeedOption_IsValid(int value);
 const FeedOption FeedOption_MIN = CONNECT;
-const FeedOption FeedOption_MAX = MESSAGE;
+const FeedOption FeedOption_MAX = ACK;
 const int FeedOption_ARRAYSIZE = FeedOption_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* FeedOption_descriptor();
@@ -57,6 +60,103 @@ inline bool FeedOption_Parse(
     FeedOption_descriptor(), name, value);
 }
 // ===================================================================
+
+class FeedRemoteInfo : public ::google::protobuf::Message {
+ public:
+  FeedRemoteInfo();
+  virtual ~FeedRemoteInfo();
+
+  FeedRemoteInfo(const FeedRemoteInfo& from);
+
+  inline FeedRemoteInfo& operator=(const FeedRemoteInfo& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const FeedRemoteInfo& default_instance();
+
+  void Swap(FeedRemoteInfo* other);
+
+  // implements Message ----------------------------------------------
+
+  FeedRemoteInfo* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const FeedRemoteInfo& from);
+  void MergeFrom(const FeedRemoteInfo& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required int32 port = 1;
+  inline bool has_port() const;
+  inline void clear_port();
+  static const int kPortFieldNumber = 1;
+  inline ::google::protobuf::int32 port() const;
+  inline void set_port(::google::protobuf::int32 value);
+
+  // optional string ip = 2;
+  inline bool has_ip() const;
+  inline void clear_ip();
+  static const int kIpFieldNumber = 2;
+  inline const ::std::string& ip() const;
+  inline void set_ip(const ::std::string& value);
+  inline void set_ip(const char* value);
+  inline void set_ip(const char* value, size_t size);
+  inline ::std::string* mutable_ip();
+  inline ::std::string* release_ip();
+  inline void set_allocated_ip(::std::string* ip);
+
+  // @@protoc_insertion_point(class_scope:idl.FeedRemoteInfo)
+ private:
+  inline void set_has_port();
+  inline void clear_has_port();
+  inline void set_has_ip();
+  inline void clear_has_ip();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* ip_;
+  ::google::protobuf::int32 port_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_feed_2eproto();
+  friend void protobuf_AssignDesc_feed_2eproto();
+  friend void protobuf_ShutdownFile_feed_2eproto();
+
+  void InitAsDefaultInstance();
+  static FeedRemoteInfo* default_instance_;
+};
+// -------------------------------------------------------------------
 
 class FeedAction : public ::google::protobuf::Message {
  public:
@@ -119,24 +219,33 @@ class FeedAction : public ::google::protobuf::Message {
   inline ::idl::FeedOption option() const;
   inline void set_option(::idl::FeedOption value);
 
-  // required int32 fd = 2;
+  // optional int32 fd = 2;
   inline bool has_fd() const;
   inline void clear_fd();
   static const int kFdFieldNumber = 2;
   inline ::google::protobuf::int32 fd() const;
   inline void set_fd(::google::protobuf::int32 value);
 
-  // optional string data = 3;
+  // optional bytes data = 3;
   inline bool has_data() const;
   inline void clear_data();
   static const int kDataFieldNumber = 3;
   inline const ::std::string& data() const;
   inline void set_data(const ::std::string& value);
   inline void set_data(const char* value);
-  inline void set_data(const char* value, size_t size);
+  inline void set_data(const void* value, size_t size);
   inline ::std::string* mutable_data();
   inline ::std::string* release_data();
   inline void set_allocated_data(::std::string* data);
+
+  // optional .idl.FeedRemoteInfo remoteInfo = 4;
+  inline bool has_remoteinfo() const;
+  inline void clear_remoteinfo();
+  static const int kRemoteInfoFieldNumber = 4;
+  inline const ::idl::FeedRemoteInfo& remoteinfo() const;
+  inline ::idl::FeedRemoteInfo* mutable_remoteinfo();
+  inline ::idl::FeedRemoteInfo* release_remoteinfo();
+  inline void set_allocated_remoteinfo(::idl::FeedRemoteInfo* remoteinfo);
 
   // @@protoc_insertion_point(class_scope:idl.FeedAction)
  private:
@@ -146,15 +255,18 @@ class FeedAction : public ::google::protobuf::Message {
   inline void clear_has_fd();
   inline void set_has_data();
   inline void clear_has_data();
+  inline void set_has_remoteinfo();
+  inline void clear_has_remoteinfo();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   int option_;
   ::google::protobuf::int32 fd_;
   ::std::string* data_;
+  ::idl::FeedRemoteInfo* remoteinfo_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_feed_2eproto();
   friend void protobuf_AssignDesc_feed_2eproto();
@@ -167,6 +279,102 @@ class FeedAction : public ::google::protobuf::Message {
 
 
 // ===================================================================
+
+// FeedRemoteInfo
+
+// required int32 port = 1;
+inline bool FeedRemoteInfo::has_port() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void FeedRemoteInfo::set_has_port() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void FeedRemoteInfo::clear_has_port() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void FeedRemoteInfo::clear_port() {
+  port_ = 0;
+  clear_has_port();
+}
+inline ::google::protobuf::int32 FeedRemoteInfo::port() const {
+  return port_;
+}
+inline void FeedRemoteInfo::set_port(::google::protobuf::int32 value) {
+  set_has_port();
+  port_ = value;
+}
+
+// optional string ip = 2;
+inline bool FeedRemoteInfo::has_ip() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void FeedRemoteInfo::set_has_ip() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void FeedRemoteInfo::clear_has_ip() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void FeedRemoteInfo::clear_ip() {
+  if (ip_ != &::google::protobuf::internal::kEmptyString) {
+    ip_->clear();
+  }
+  clear_has_ip();
+}
+inline const ::std::string& FeedRemoteInfo::ip() const {
+  return *ip_;
+}
+inline void FeedRemoteInfo::set_ip(const ::std::string& value) {
+  set_has_ip();
+  if (ip_ == &::google::protobuf::internal::kEmptyString) {
+    ip_ = new ::std::string;
+  }
+  ip_->assign(value);
+}
+inline void FeedRemoteInfo::set_ip(const char* value) {
+  set_has_ip();
+  if (ip_ == &::google::protobuf::internal::kEmptyString) {
+    ip_ = new ::std::string;
+  }
+  ip_->assign(value);
+}
+inline void FeedRemoteInfo::set_ip(const char* value, size_t size) {
+  set_has_ip();
+  if (ip_ == &::google::protobuf::internal::kEmptyString) {
+    ip_ = new ::std::string;
+  }
+  ip_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* FeedRemoteInfo::mutable_ip() {
+  set_has_ip();
+  if (ip_ == &::google::protobuf::internal::kEmptyString) {
+    ip_ = new ::std::string;
+  }
+  return ip_;
+}
+inline ::std::string* FeedRemoteInfo::release_ip() {
+  clear_has_ip();
+  if (ip_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = ip_;
+    ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void FeedRemoteInfo::set_allocated_ip(::std::string* ip) {
+  if (ip_ != &::google::protobuf::internal::kEmptyString) {
+    delete ip_;
+  }
+  if (ip) {
+    set_has_ip();
+    ip_ = ip;
+  } else {
+    clear_has_ip();
+    ip_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
 
 // FeedAction
 
@@ -193,7 +401,7 @@ inline void FeedAction::set_option(::idl::FeedOption value) {
   option_ = value;
 }
 
-// required int32 fd = 2;
+// optional int32 fd = 2;
 inline bool FeedAction::has_fd() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -215,7 +423,7 @@ inline void FeedAction::set_fd(::google::protobuf::int32 value) {
   fd_ = value;
 }
 
-// optional string data = 3;
+// optional bytes data = 3;
 inline bool FeedAction::has_data() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
@@ -248,7 +456,7 @@ inline void FeedAction::set_data(const char* value) {
   }
   data_->assign(value);
 }
-inline void FeedAction::set_data(const char* value, size_t size) {
+inline void FeedAction::set_data(const void* value, size_t size) {
   set_has_data();
   if (data_ == &::google::protobuf::internal::kEmptyString) {
     data_ = new ::std::string;
@@ -282,6 +490,44 @@ inline void FeedAction::set_allocated_data(::std::string* data) {
   } else {
     clear_has_data();
     data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional .idl.FeedRemoteInfo remoteInfo = 4;
+inline bool FeedAction::has_remoteinfo() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void FeedAction::set_has_remoteinfo() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void FeedAction::clear_has_remoteinfo() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void FeedAction::clear_remoteinfo() {
+  if (remoteinfo_ != NULL) remoteinfo_->::idl::FeedRemoteInfo::Clear();
+  clear_has_remoteinfo();
+}
+inline const ::idl::FeedRemoteInfo& FeedAction::remoteinfo() const {
+  return remoteinfo_ != NULL ? *remoteinfo_ : *default_instance_->remoteinfo_;
+}
+inline ::idl::FeedRemoteInfo* FeedAction::mutable_remoteinfo() {
+  set_has_remoteinfo();
+  if (remoteinfo_ == NULL) remoteinfo_ = new ::idl::FeedRemoteInfo;
+  return remoteinfo_;
+}
+inline ::idl::FeedRemoteInfo* FeedAction::release_remoteinfo() {
+  clear_has_remoteinfo();
+  ::idl::FeedRemoteInfo* temp = remoteinfo_;
+  remoteinfo_ = NULL;
+  return temp;
+}
+inline void FeedAction::set_allocated_remoteinfo(::idl::FeedRemoteInfo* remoteinfo) {
+  delete remoteinfo_;
+  remoteinfo_ = remoteinfo;
+  if (remoteinfo) {
+    set_has_remoteinfo();
+  } else {
+    clear_has_remoteinfo();
   }
 }
 

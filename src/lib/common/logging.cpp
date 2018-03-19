@@ -54,7 +54,7 @@ void Logger::debug(const char *fmt, ...) {
 
     p += snprintf(
             p, limit - p, "[%s] [%04d-%02d-%02d %02d:%02d:%02d.%06d] - [%s]: ",
-            level_name[level], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+            level_name[DEBUG], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
             static_cast<int>(now_tv.tv_usec), this->name
     );
 
@@ -90,7 +90,7 @@ void Logger::info(const char *fmt, ...) {
 
     p += snprintf(
             p, limit - p, "[%s] [%04d-%02d-%02d %02d:%02d:%02d.%06d] - [%s]: ",
-            level_name[level], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+            level_name[INFO], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
             static_cast<int>(now_tv.tv_usec), this->name
     );
 
@@ -126,7 +126,7 @@ void Logger::warn(const char *fmt, ...) {
 
     p += snprintf(
             p, limit - p, "[%s] [%04d-%02d-%02d %02d:%02d:%02d.%06d] - [%s]: ",
-            level_name[level], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+            level_name[WARN], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
             static_cast<int>(now_tv.tv_usec), this->name
     );
 
@@ -162,7 +162,7 @@ void Logger::error(const char *fmt, ...) {
 
     p += snprintf(
             p, limit - p, "[%s] [%04d-%02d-%02d %02d:%02d:%02d.%06d] - [%s]: ",
-            level_name[level], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+            level_name[ERROR], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
             static_cast<int>(now_tv.tv_usec), this->name
     );
 
@@ -198,7 +198,7 @@ void Logger::fatal(const char *fmt, ...) {
 
     p += snprintf(
             p, limit - p, "[%s] [%04d-%02d-%02d %02d:%02d:%02d.%06d] - [%s]: ",
-            level_name[level], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+            level_name[FATAL], t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
             static_cast<int>(now_tv.tv_usec), this->name
     );
 

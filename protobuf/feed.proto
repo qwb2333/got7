@@ -3,10 +3,18 @@ enum FeedOption {
     CONNECT = 0;
     DISCONNECT = 1;
     MESSAGE = 2;
+    PIPE = 3;
+    ACK = 4;
+}
+
+message FeedRemoteInfo {
+    required int32 port = 1;
+    optional string ip = 2;
 }
 
 message FeedAction {
     required FeedOption option = 1;
-    required int32 fd = 2;
-    optional string data = 3;
+    optional int32 fd = 2;
+    optional bytes data = 3;
+    optional FeedRemoteInfo remoteInfo = 4;
 }

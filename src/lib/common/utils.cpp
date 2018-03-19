@@ -45,3 +45,21 @@ int Utils::hash(int x, int mod) {
     }
     return (hash & 0x7FFFFFFF) % mod;
 }
+
+void Utils::uint16ToUChars(uint16_t x, u_char *number) {
+    int pos = 16;
+    for(int i = 0; i < 2; i++) {
+        pos -= 8;
+        number[i] = (u_char)(x >> pos & 255);
+    }
+}
+
+uint16_t Utils::uCharsToUint16(u_char *number) {
+    int pos = 16;
+    uint16_t ret = 0;
+    for(int i = 0; i < 2; i++) {
+        pos -= 8;
+        ret |= number[i] << pos;
+    }
+    return ret;
+}

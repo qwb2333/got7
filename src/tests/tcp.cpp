@@ -4,8 +4,8 @@
 using namespace qwb;
 
 int main() {
-    TcpServerPtr server(new TcpServer("0.0.0.0", 4928));
-    TcpClientPtr client(new TcpClient());
+    TcpPtr server(new Tcp("0.0.0.0", 4928));
+    TcpPtr client(new Tcp());
 
     saveExit(SIGINT, [&]{
         server->close();
@@ -34,7 +34,7 @@ int main() {
             int len = (int)::read(fd, buff, (unsigned)buffSize);
             if(len == 0) break;
 
-            buff[len + 1] = '\0';
+            buff[len] = '\0';
             std::printf("%s", buff);
         }
         log->info("client has been closed.");

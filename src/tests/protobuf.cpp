@@ -9,7 +9,14 @@ int main() {
     feedAction.set_option(FeedOption::CONNECT);
     feedAction.set_data("ceshi");
 
-    std::string str = feedAction.SerializeAsString();
-    std::printf("%s\n", str.c_str());
+    const int buffSize = 1024;
+    char buff[buffSize];
+
+    int len = feedAction.ByteSize();
+    feedAction.SerializeToArray(buff, buffSize);
+
+    FeedAction feedNew;
+    feedNew.ParseFromArray(buff, len);
+    std::printf("%d, %s\n", feedNew.fd(), feedNew.data().c_str());
     return 0;
 }
