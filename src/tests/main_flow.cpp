@@ -5,15 +5,34 @@
 #include "lib/common/utils.h"
 using namespace qwb;
 
-const uint16_t proxyPort = 1080;
+const uint16_t proxyPort = 80;
+const char* proxyIp = "10.64.70.148";
 
 const uint16_t innerMainPort = 3001;
 
 const uint16_t outerMainPort = 4001;
 const uint16_t outerHandlePort = 4002;
 
-const int buffSize = 8200;
-const int dataMaxSize = 4080;
+const int pageSize = 4096;
+const int buffSize = 10000;
+const int protoLenSize = 2;
+
+struct Ctx {
+    int pipeFd;
+    u_char buff[buffSize];
+    uint16_t usedCount;
+    int protoSize;
+
+    Ctx(int pipeFd = 0):pipeFd(pipeFd){}
+};
+typedef std::shared_ptr<Ctx> CtxPtr;
+
+class CtxFactory {
+public:
+    static CtxPtr create(int pipeFd = 0) {
+        return std::make_shared<Ctx>(pipeFd);
+    }
+};
 
 class FeedUtils {
 public:
@@ -36,24 +55,71 @@ public:
     }
     static void createMessage(idl::FeedAction &action, int fd, const u_char *buff, int size) {
         action.set_fd(fd);
-        action.set_data(buff, size);
+        action.set_data(buff, (unsigned)size);
         action.set_option(idl::FeedOption::MESSAGE);
     }
-    static idl::FeedAction getFeedAction(const u_char *buff, int size) {
-        idl::FeedAction action;
+    static void serializeFeedAction(idl::FeedAction &action, const u_char *buff, int size) {
         action.ParseFromArray(buff, size);
-        return action;
     }
-    static void sendMessage(int outerFd, int pipeFd, u_char *buff, int size) {
-        idl::FeedAction action;
-        createMessage(action, outerFd, buff, size);
+    static void sendAction(idl::FeedAction &action, int pipeFd) {
+        u_char buff[buffSize];
         int byteSize = action.ByteSize();
 
         // 先发一个2字节的整数,表示protobuf的长度
-        u_char *ptr = buff, *limit = buff + size;
-        Utils::uint16ToUChars((uint16_t)byteSize, ptr); ptr += 2;
+        u_char *ptr = buff, *limit = buff + buffSize;
+        Utils::uint16ToUChars((uint16_t)byteSize, ptr); ptr += protoLenSize;
         action.SerializeToArray(ptr, (int)(limit - ptr)); ptr += byteSize;
         ::write(pipeFd, buff, ptr - buff);
+    }
+    static int readMessage(idl::FeedAction &refAction, CtxPtr &ctx) {
+        if(!ctx->protoSize) {
+            if(ctx->usedCount >= protoLenSize) {
+                // buff中是有protoSize大小的,弄一下
+                ctx->protoSize = Utils::uCharsToUint16(ctx->buff);
+            } else {
+                int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount, (unsigned)(buffSize - ctx->usedCount));
+                if(len <= 0) return len;
+                ctx->usedCount += len;
+
+                if(ctx->usedCount < protoLenSize) {
+                    // 这个情况非常奇葩, 应该不会出现才对
+                    log->error("can't get protoSize, pipeFd = %d.", ctx->pipeFd);
+                    return 0; // 认为需要断开
+                }
+                ctx->protoSize = Utils::uCharsToUint16(ctx->buff);
+            }
+            if(ctx->protoSize > pageSize + 128) {
+                // 这个情况理论是不存在的, protoSize理论只会稍微大于pageSize,因为protobuf中除了data还带有一些其他数据
+                log->error("usedCount > pageSize. pipeFd = %d.", ctx->pipeFd);
+                return 0; // 认为需要断开
+            }
+        }
+
+        // proto内容还不足够,循环读
+        int whileCount = 0;
+        while(ctx->usedCount - protoLenSize < ctx->protoSize) {
+            if(whileCount >= 1) {
+                // 这个情况理论是不存在的
+                log->error("whileCount > 1. pipeFd = %d", ctx->pipeFd);
+                return 0;
+            }
+            int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount, (unsigned)(buffSize - ctx->usedCount));
+            if(len <= 0) return len;
+
+            ctx->usedCount += len;
+            whileCount++;
+        }
+
+        serializeFeedAction(refAction, ctx->buff + protoLenSize, ctx->protoSize);
+        int resLen = ctx->usedCount - protoLenSize - ctx->protoSize;
+        int beginPos = ctx->protoSize + protoLenSize;
+
+        for(int i = 0; i < resLen; i++) {
+            ctx->buff[i] = ctx->buff[i + beginPos];
+        }
+        ctx->protoSize = 0;
+        ctx->usedCount = (uint16_t)resLen;
+        return 1; // 表示正常返回
     }
 };
 
@@ -74,31 +140,34 @@ public:
         tcp->bind();
         tcp->connect("127.0.0.1", outerMainPort);
         // 让OuterMainService获得pipe用的fd
-        int pipeFd = tcp->get_fd();
-        FeedUtils::createPipe().SerializeToFileDescriptor(pipeFd);
+
+        CtxPtr ctx = CtxFactory::create(tcp->get_fd());
+
+        idl::FeedAction action = FeedUtils::createPipe();
+        FeedUtils::sendAction(action, ctx->pipeFd);
         log->info("send PIPE.");
 
-        func_main_handle(pipeFd);
+        func_main_handle(ctx);
     }
 
 private:
     TcpPtr tcp;
-    void func_main_handle(int pipeFd) {
+    void func_main_handle(CtxPtr &ctx) {
         RemoteInfo remoteInfo;
+        idl::FeedAction action;
 
         std::map<int, int> fdMap;
-        u_char buff[buffSize];
-
+        int pipeFd = ctx->pipeFd;
         while(true) {
-            int len = (int)::read(pipeFd, buff, buffSize);
+            int len = FeedUtils::readMessage(action, ctx);
             if(len == -1) {
                 log->error("read fd = %d; %d; %s", pipeFd, errno, strerror(errno));
             } else if(len == 0) {
                 log->info("pipe DISCONNECT.");
+                ::close(pipeFd);
                 break;
             }
 
-            idl::FeedAction action = FeedUtils::getFeedAction(buff, buffSize);
             idl::FeedOption option = action.option();
             int outerFd = action.fd();
 
@@ -108,7 +177,7 @@ private:
                 TcpPtr client = std::make_shared<Tcp>("127.0.0.1");
                 client->setLogLevel(LogLevel::ERROR);
                 client->socket();
-                client->connect("127.0.0.1", proxyPort);
+                client->connect(proxyIp, proxyPort);
                 int innerFd = client->get_fd();
 
                 log->info("add map, innerFd = %d, outerFd = %d", innerFd, outerFd);
@@ -141,20 +210,23 @@ private:
         }
     }
     void func_handle(int innerFd, int outerFd, int pipeFd, std::map<int, int> &fdMap) {
-        u_char buff[buffSize];
+        u_char buff[pageSize];
 
+        idl::FeedAction action;
         while(true) {
-            int len = (int)::read(innerFd, buff, buffSize);
+            int len = (int)::read(innerFd, buff, pageSize);
             if(len == -1) {
                 log->error("read fd = %d; %d; %s", innerFd, errno, strerror(errno));
             }else if(len == 0) {
                 log->info("recv proxy DISCONNECT. send DISCONNECT.");
-                FeedUtils::createDisconnect(outerFd).SerializeToFileDescriptor(pipeFd);
+                action = FeedUtils::createDisconnect(outerFd);
+                FeedUtils::sendAction(action, pipeFd);
                 fdMap.erase(outerFd);
                 return;
             } else {
                 log->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
-                FeedUtils::sendMessage(outerFd, pipeFd, buff, len);
+                FeedUtils::createMessage(action, outerFd, buff, len);
+                FeedUtils::sendAction(action, pipeFd);
             }
         }
     }
@@ -185,16 +257,17 @@ public:
 
         // 只为了建立pipeFd
         tcpMain->accept(remoteInfo);
-        int pipeFd = remoteInfo.fd;
-        log->info("get PIPE. fd = %d", pipeFd);
 
-        func_main_handle(pipeFd, tcpPart);
+        CtxPtr ctx = CtxFactory::create(remoteInfo.fd);
+        log->info("get PIPE. fd = %d", ctx->pipeFd);
+
+        func_main_handle(ctx, tcpPart);
     }
 private:
     TcpPtr tcpMain, tcpPart;
-    void func_main_handle(int pipeFd, TcpPtr &tcpPart) {
+    void func_main_handle(CtxPtr &ctx, TcpPtr &tcpPart) {
         std::set<int> fdExists;
-        u_char buff[buffSize];
+        int pipeFd = ctx->pipeFd;
 
         std::thread thOuterPartHandle([this, pipeFd, &tcpPart, &fdExists](){
             log->setName("OuterPartHandle");
@@ -204,6 +277,7 @@ private:
             tcpPart->listen();
 
             RemoteInfo remoteInfo;
+            idl::FeedAction action;
             while(true) {
                 if(!tcpPart->accept(remoteInfo)) {
                     log->info("part DISCONNECT.");
@@ -213,7 +287,8 @@ private:
                 int outerFd = remoteInfo.fd;
 
                 fdExists.insert(outerFd);
-                FeedUtils::createConnect(outerFd).SerializeToFileDescriptor(pipeFd);
+                action = FeedUtils::createConnect(outerFd);
+                FeedUtils::sendAction(action, pipeFd);
                 std::thread thOuterHandle([this, outerFd, pipeFd, &fdExists](){
                     log->setName("OuterHandle");
                     this->func_handle(outerFd, pipeFd, fdExists);
@@ -223,16 +298,17 @@ private:
         });
         thOuterPartHandle.detach();
 
+        idl::FeedAction action;
         while(true) {
-            int len = (int)::read(pipeFd, buff, buffSize);
+            int len = FeedUtils::readMessage(action, ctx);
             if(len == -1) {
                 log->error("read fd = %d; %d; %s", pipeFd, errno, strerror(errno));
             } else if(len == 0) {
                 log->info("pipe DISCONNECT.");
+                ::close(pipeFd);
                 break;
             }
 
-            idl::FeedAction action = FeedUtils::getFeedAction(buff, buffSize);
             idl::FeedOption option = action.option();
             int outerFd = action.fd();
 
@@ -256,20 +332,23 @@ private:
         }
     }
     void func_handle(int outerFd, int pipeFd, std::set<int> &fdExists) {
-        u_char buff[buffSize];
+        u_char buff[pageSize];
 
+        idl::FeedAction action;
         while(true) {
-            int len = (int)::read(outerFd, buff, buffSize);
+            int len = (int)::read(outerFd, buff, pageSize);
             if(len == -1) {
                 log->error("read fd = %d; %d; %s", outerFd, errno, strerror(errno));
             }else if(len == 0) {
                 log->info("recv proxy DISCONNECT. send DISCONNECT.");
-                FeedUtils::createDisconnect(outerFd).SerializeToFileDescriptor(pipeFd);
+                action = FeedUtils::createDisconnect(outerFd);
+                FeedUtils::sendAction(action, pipeFd);
                 fdExists.erase(outerFd);
                 return;
             } else {
                 log->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
-                FeedUtils::sendMessage(outerFd, pipeFd, buff, len);
+                FeedUtils::createMessage(action, outerFd, buff, len);
+                FeedUtils::sendAction(action, pipeFd);
             }
         }
     }

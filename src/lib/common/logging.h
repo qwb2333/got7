@@ -39,7 +39,7 @@ namespace qwb {
         std::string string_name;
 
         LogLevel level = LogLevel::INFO;
-        const char *level_name[FATAL + 1] = {"DEBUG", "INFO", "WARN", "ERROE", "FATAL"};
+        const char *level_name[FATAL + 1] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
         Logger(const Logger&) = delete;
         Logger operator=(const Logger&) = delete;
