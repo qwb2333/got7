@@ -63,3 +63,9 @@ uint16_t Utils::uCharsToUint16(u_char *number) {
     }
     return ret;
 }
+
+uint64_t Utils::getTimeNow() {
+    struct timeval now_tv;
+    gettimeofday(&now_tv, NULL);
+    return (uint64_t)now_tv.tv_sec;
+}

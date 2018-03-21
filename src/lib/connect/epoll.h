@@ -9,17 +9,30 @@ namespace qwb {
 
     class EpollRun {
     public:
-        void init(ConnectPool *connectPool, int epoll_size, int consumer_id);
-        void add(TaskPtr task, TaskEvents taskEvents);
-        bool remove(const int fd);
-        bool loop_once();
+        virtual ~EpollRun();
+        void init(ConnectPool *connectPool, int epollSize, int consumerId);
+        void add(TaskBase *task, TaskEvents taskEvents);
+        bool remove(TaskBase *task, bool force = false);
+        bool loopOnce();
+
+        void setLogName(const char *name) {
+            if(log != nullptr) {
+                log->setName(name);
+            }
+        }
+        void setLogLevel(LogLevel level) {
+            if(log != nullptr) {
+                log->setLevel(level);
+            }
+        }
+        void reset();
 
     protected:
         const int waitMs = 5000;
 
-        int consumer_id;
-        int epoll_fd, epoll_size;
-        std::map<int, TaskPtr> fd_map;
+        int consumerId;
+        int epollFd, epollSize;
+        std::map<int, TaskBase*> fdMap;
         ConnectPool *connectPool;
 
         std::vector<epoll_event> activeEvents;

@@ -1,40 +1,48 @@
 #include "connect_pool.h"
 using namespace qwb;
 
-void ConnectPool::add(TaskPtr task, TaskEvents taskEvents) {
-    int id = Utils::hash(task->fd, thread_size);
-    epoll_run_pool[id].add(task, taskEvents);
+void ConnectPool::add(TaskBase *task, TaskEvents taskEvents) {
+    int id = Utils::hash(task->fd, threadSize);
+    epollRunPool[id].add(task, taskEvents);
 }
 
-void ConnectPool::remove(const int fd) {
-    int id = Utils::hash(fd, thread_size);
-    epoll_run_pool[id].remove(fd);
+void ConnectPool::addById(TaskBase *task, TaskEvents taskEvents, int consumerId) {
+    epollRunPool[consumerId].add(task, taskEvents);
 }
 
-ConnectPool::ConnectPool(int thread_size, int epoll_size) {
-    this->thread_size = thread_size;
-    this->epoll_size = epoll_size;
+void ConnectPool::remove(TaskBase *task, bool force) {
+    int id = Utils::hash(task->fd, threadSize);
+    epollRunPool[id].remove(task, force);
+}
 
-    epoll_run_pool.resize((unsigned)thread_size);
-    for(int i = 0; i < thread_size; i++) {
-        epoll_run_pool[i].init(this, epoll_size, i);
+void ConnectPool::removeById(TaskBase *task, int consumerId, bool force) {
+    epollRunPool[consumerId].remove(task, force);
+}
+
+ConnectPool::ConnectPool(int threadSize, int epollSize) {
+    this->threadSize = threadSize;
+    this->epollSize = epollSize;
+
+    epollRunPool.resize((unsigned)threadSize);
+    for(int i = 0; i < threadSize; i++) {
+        epollRunPool[i].init(this, epollSize, i);
     }
 }
 
 void ConnectPool::join() {
-    std::thread thread_array[thread_size];
-    for(int i = 0; i < thread_size; i++) {
-        thread_array[i] = std::thread([this, i] {
-            this->real_run(epoll_run_pool[i], i);
+    std::thread threadArray[threadSize];
+    for(int i = 0; i < threadSize; i++) {
+        threadArray[i] = std::thread([this, i] {
+            this->realRun(epollRunPool[i], i);
         });
     }
 
-    for(int i = 0; i < thread_size; i++) {
-        thread_array[i].join();
+    for(int i = 0; i < threadSize; i++) {
+        threadArray[i].join();
     }
 }
 
-void ConnectPool::real_run(EpollRun &epollRun, int id) {
-    while(epollRun.loop_once());
+void ConnectPool::realRun(EpollRun &epollRun, int id) {
+    while(epollRun.loopOnce());
     log->info("thread %d closed.", id);
 }

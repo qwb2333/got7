@@ -110,9 +110,9 @@ void protobuf_AddDesc_feed_2eproto() {
     "ort\030\001 \002(\005\022\n\n\002ip\030\002 \001(\t\"p\n\nFeedAction\022\037\n\006o"
     "ption\030\001 \002(\0162\017.idl.FeedOption\022\n\n\002fd\030\002 \001(\005"
     "\022\014\n\004data\030\003 \001(\014\022\'\n\nremoteInfo\030\004 \001(\0132\023.idl"
-    ".FeedRemoteInfo*I\n\nFeedOption\022\013\n\007CONNECT"
+    ".FeedRemoteInfo*R\n\nFeedOption\022\013\n\007CONNECT"
     "\020\000\022\016\n\nDISCONNECT\020\001\022\013\n\007MESSAGE\020\002\022\010\n\004PIPE\020"
-    "\003\022\007\n\003ACK\020\004", 250);
+    "\003\022\007\n\003ACK\020\004\022\007\n\003NEW\020\005", 259);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "feed.proto", &protobuf_RegisterTypes);
   FeedRemoteInfo::default_instance_ = new FeedRemoteInfo();
@@ -139,6 +139,7 @@ bool FeedOption_IsValid(int value) {
     case 2:
     case 3:
     case 4:
+    case 5:
       return true;
     default:
       return false;

@@ -1,4 +1,5 @@
 #pragma once
+#include <sys/time.h>
 #include "lib/common/base.h"
 
 namespace qwb {
@@ -10,5 +11,6 @@ namespace qwb {
         static int hash(int x, int mod);
         static void uint16ToUChars(uint16_t x, u_char *number);
         static uint16_t uCharsToUint16(u_char *number);
+        static uint64_t getTimeNow();
     };
 }

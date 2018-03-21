@@ -1,5 +1,5 @@
 #include <cstdio>
-#include "model/feed.pb.h"
+#include "got7/protobuf/feed.pb.h"
 using namespace idl;
 
 int main() {

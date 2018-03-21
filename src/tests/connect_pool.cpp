@@ -8,7 +8,7 @@ using namespace qwb;
 
 class TaskTest: public TaskBase {
 public:
-    void dealReadEvent(ConnectPool *manager) override {
+    void readEvent(ConnectPool *manager) override {
 
         for(int i = 0; i < 64; i++) {
             char buff[8];
@@ -39,13 +39,13 @@ int main() {
     qwb::log->setLevel(LogLevel::DEBUG);
     ConfigReaderPtr config = ConfigReaderFactory::createFromFile("/home/qwb/code/Clion/got7/config/inner_service.properties");
 
-    int epoll_size = config->getAsInt("epoll_size", 3);
-    int thread_size = config->getAsInt("thread_size", 2);
-    int mainfd_size = config->getAsInt("mainfd_size", 2000);
+    int epollSize = config->getAsInt("epollSize", 3);
+    int threadSize = config->getAsInt("threadSize", 2);
+    int mainFdSize = config->getAsInt("mainFdSize", 2000);
 
     int fd[5][2];
     std::thread thread[5];
-    ConnectPollPtr pool(new ConnectPool(thread_size, epoll_size));
+    ConnectPollPtr pool(new ConnectPool(threadSize, epollSize));
 
     for(int i = 0; i < 5; i++) {
         qwb::log->debug("pipe = %d", pipe(fd[i]));

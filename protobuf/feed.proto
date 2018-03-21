@@ -1,10 +1,13 @@
 package idl;
 enum FeedOption {
+    // common
     CONNECT = 0;
     DISCONNECT = 1;
     MESSAGE = 2;
-    PIPE = 3;
-    ACK = 4;
+
+    PIPE = 3; // ininer->outer
+    ACK = 4;  // outer->inner
+    NEW = 5; // client->outer
 }
 
 message FeedRemoteInfo {

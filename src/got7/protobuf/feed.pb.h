@@ -42,11 +42,12 @@ enum FeedOption {
   DISCONNECT = 1,
   MESSAGE = 2,
   PIPE = 3,
-  ACK = 4
+  ACK = 4,
+  NEW = 5
 };
 bool FeedOption_IsValid(int value);
 const FeedOption FeedOption_MIN = CONNECT;
-const FeedOption FeedOption_MAX = ACK;
+const FeedOption FeedOption_MAX = NEW;
 const int FeedOption_ARRAYSIZE = FeedOption_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* FeedOption_descriptor();

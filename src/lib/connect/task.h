@@ -9,15 +9,26 @@ namespace qwb {
         int fd;
         virtual ~TaskBase() = default;
 
-        virtual void dealReadEvent(ConnectPool* manager) {
+        virtual void readEvent(ConnectPool* manager) {
 
         }
 
-        virtual void dealWriteEvent(ConnectPool* manager) {
+        virtual void writeEvent(ConnectPool* manager) {
+
+        }
+
+        virtual void constructEvent(ConnectPool* manager) {
+
+        }
+
+        virtual void destructEvent(ConnectPool* manager) {
+
+        }
+
+        virtual void forceDestructEvent(ConnectPool *manager) {
 
         }
     };
-    typedef std::shared_ptr<TaskBase> TaskPtr;
 
     enum TaskEvents {
         ReadEvent = EPOLLIN|EPOLLHUP|EPOLLERR,

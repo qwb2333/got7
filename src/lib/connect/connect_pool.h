@@ -6,21 +6,27 @@
 namespace qwb {
     class ConnectPool {
     public:
-        ConnectPool(int thread_size, int epoll_size);
+        ConnectPool(int threadSize, int epollSize);
+        virtual ~ConnectPool() = default;
 
-        void add(TaskPtr task, TaskEvents taskEvents);
-        void remove(const int fd);
+        void add(TaskBase *task, TaskEvents taskEvents);
+        void addById(TaskBase *task, TaskEvents taskEvents, int consumerId);
+        void remove(TaskBase *task, bool force = false);
+        void removeById(TaskBase *task, int consumerId, bool force = false);
         void join();
 
+        EpollRun &getEpollRun(int consumerId) {
+            return epollRunPool[consumerId];
+        }
         int getThreadSize() const {
-            return thread_size;
+            return threadSize;
         }
 
-    private:
-        int thread_size, epoll_size;
-        std::vector<EpollRun> epoll_run_pool;
+    protected:
+        int epollSize, threadSize;
+        std::vector<EpollRun> epollRunPool;
 
-        void real_run(EpollRun &epollRun, int id);
+        virtual void realRun(EpollRun &epollRun, int id);
     };
 
     typedef std::unique_ptr<ConnectPool> ConnectPollPtr;

@@ -1,12 +1,12 @@
 #include <thread>
-#include "model/feed.pb.h"
+#include "got7/protobuf/feed.pb.h"
 #include "lib/connect/tcp.h"
 #include "lib/common/exit.h"
 #include "lib/common/utils.h"
 using namespace qwb;
 
-const uint16_t proxyPort = 80;
-const char* proxyIp = "10.64.70.148";
+const uint16_t proxyPort = 443;
+const char* proxyIp = "97.64.35.146";
 
 const uint16_t innerMainPort = 3001;
 
@@ -16,6 +16,7 @@ const uint16_t outerHandlePort = 4002;
 const int pageSize = 4096;
 const int buffSize = 10000;
 const int protoLenSize = 2;
+const int badFdErrno = 9;
 
 struct Ctx {
     int pipeFd;
@@ -26,13 +27,6 @@ struct Ctx {
     Ctx(int pipeFd = 0):pipeFd(pipeFd){}
 };
 typedef std::shared_ptr<Ctx> CtxPtr;
-
-class CtxFactory {
-public:
-    static CtxPtr create(int pipeFd = 0) {
-        return std::make_shared<Ctx>(pipeFd);
-    }
-};
 
 class FeedUtils {
 public:
@@ -45,6 +39,12 @@ public:
         idl::FeedAction action;
         action.set_fd(fd);
         action.set_option(idl::FeedOption::CONNECT);
+        return action;
+    }
+    static idl::FeedAction createAck(int consumerId) {
+        idl::FeedAction action;
+        action.set_fd(consumerId);
+        action.set_option(idl::FeedOption::ACK);
         return action;
     }
     static idl::FeedAction createDisconnect(int fd) {
@@ -141,7 +141,7 @@ public:
         tcp->connect("127.0.0.1", outerMainPort);
         // 让OuterMainService获得pipe用的fd
 
-        CtxPtr ctx = CtxFactory::create(tcp->get_fd());
+        CtxPtr ctx = std::make_shared<Ctx>(tcp->get_fd());
 
         idl::FeedAction action = FeedUtils::createPipe();
         FeedUtils::sendAction(action, ctx->pipeFd);
@@ -213,15 +213,20 @@ private:
         u_char buff[pageSize];
 
         idl::FeedAction action;
+
         while(true) {
             int len = (int)::read(innerFd, buff, pageSize);
             if(len == -1) {
-                log->error("read fd = %d; %d; %s", innerFd, errno, strerror(errno));
+                if(errno != badFdErrno) {
+                    log->error("read fd = %d; %d; %s", innerFd, errno, strerror(errno));
+                }
+                return;
             }else if(len == 0) {
                 log->info("recv proxy DISCONNECT. send DISCONNECT.");
                 action = FeedUtils::createDisconnect(outerFd);
                 FeedUtils::sendAction(action, pipeFd);
                 fdMap.erase(outerFd);
+                ::close(innerFd);
                 return;
             } else {
                 log->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
@@ -236,7 +241,7 @@ class OuterMainService {
 public:
     OuterMainService() {
         tcpMain = std::make_shared<Tcp>("127.0.0.1", outerMainPort);
-        tcpPart = std::make_shared<Tcp>("127.0.0.1", outerHandlePort);
+        tcpPart = std::make_shared<Tcp>("0.0.0.0", outerHandlePort);
         tcpMain->setLogLevel(LogLevel::ERROR);
         tcpPart->setLogLevel(LogLevel::ERROR);
     }
@@ -258,7 +263,8 @@ public:
         // 只为了建立pipeFd
         tcpMain->accept(remoteInfo);
 
-        CtxPtr ctx = CtxFactory::create(remoteInfo.fd);
+
+        CtxPtr ctx = std::make_shared<Ctx>(remoteInfo.fd);
         log->info("get PIPE. fd = %d", ctx->pipeFd);
 
         func_main_handle(ctx, tcpPart);
@@ -287,7 +293,14 @@ private:
                 int outerFd = remoteInfo.fd;
 
                 fdExists.insert(outerFd);
+
                 action = FeedUtils::createConnect(outerFd);
+
+                auto *info = new idl::FeedRemoteInfo;
+                info->set_ip(proxyIp);
+                info->set_port(proxyPort);
+                action.set_allocated_remoteinfo(info);
+
                 FeedUtils::sendAction(action, pipeFd);
                 std::thread thOuterHandle([this, outerFd, pipeFd, &fdExists](){
                     log->setName("OuterHandle");
@@ -303,6 +316,8 @@ private:
             int len = FeedUtils::readMessage(action, ctx);
             if(len == -1) {
                 log->error("read fd = %d; %d; %s", pipeFd, errno, strerror(errno));
+                ::close(pipeFd);
+                break;
             } else if(len == 0) {
                 log->info("pipe DISCONNECT.");
                 ::close(pipeFd);
@@ -328,6 +343,11 @@ private:
                 } else {
                     ::write(outerFd, action.data().c_str(), action.data().length());
                 }
+            } else if(option == idl::FeedOption::PIPE) {
+                int consumerId = action.fd();
+                log->info("recv PIPE. consumerId = %d", consumerId);
+                action = FeedUtils::createAck(consumerId);
+                FeedUtils::sendAction(action, pipeFd);
             }
         }
     }
@@ -338,12 +358,17 @@ private:
         while(true) {
             int len = (int)::read(outerFd, buff, pageSize);
             if(len == -1) {
-                log->error("read fd = %d; %d; %s", outerFd, errno, strerror(errno));
+                if(errno != badFdErrno) {
+                    log->error("read fd = %d; %d; %s", outerFd, errno, strerror(errno));
+                }
+                ::close(outerFd);
+                return;
             }else if(len == 0) {
                 log->info("recv proxy DISCONNECT. send DISCONNECT.");
                 action = FeedUtils::createDisconnect(outerFd);
                 FeedUtils::sendAction(action, pipeFd);
                 fdExists.erase(outerFd);
+                ::close(outerFd);
                 return;
             } else {
                 log->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
@@ -356,10 +381,10 @@ private:
 
 
 int main() {
-    std::unique_ptr<InnerMainService> innerMainService(new InnerMainService());
+    //std::unique_ptr<InnerMainService> innerMainService(new InnerMainService());
     std::unique_ptr<OuterMainService> outerMainService(new OuterMainService());
     saveExit(SIGINT, [&](){
-        innerMainService.reset(nullptr);
+        //innerMainService.reset(nullptr);
         outerMainService.reset(nullptr);
         exit(0);
     });
@@ -368,12 +393,12 @@ int main() {
         outerMainService->run();
     });
 
-    sleep(1);
+    /*sleep(1);
     std::thread thInnerMainService([&](){
         innerMainService->run();
-    });
+    });*/
 
     thOuterMainService.join();
-    thInnerMainService.join();
+    //thInnerMainService.join();
     return 0;
 }

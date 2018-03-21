@@ -45,7 +45,7 @@ namespace qwb {
         Logger operator=(const Logger&) = delete;
     };
 
-    typedef std::unique_ptr<Logger> LoggerPtr;
+    typedef std::shared_ptr<Logger> LoggerPtr;
 
     class LoggerFactory {
     public:

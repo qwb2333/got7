@@ -10,7 +10,7 @@ void Tcp::createSockAddr(sockaddr_in &addr_in, const char *ip, uint16_t port) {
 bool Tcp::socket() {
     int result = ::socket(AF_INET, SOCK_STREAM, 0);
     if(result < 0) {
-        log->error("create socket error, %d %s", errno, strerror(errno));
+        log->error("create socket error, errno = %d %s", errno, strerror(errno));
         return false;
     }
 
@@ -27,7 +27,7 @@ bool Tcp::bind() {
 
     int result = ::bind(fd, (sockaddr*)&local_addr, sizeof(local_addr));
     if(result < 0) {
-        log->error("build socket error, %d %s", errno, strerror(errno));
+        log->error("build socket error, errno = %d %s", errno, strerror(errno));
         return false;
     }
 
@@ -47,7 +47,7 @@ void Tcp::close() {
 bool Tcp::accept(RemoteInfo &info) {
     int connect_fd = ::accept(fd, (sockaddr*)NULL, NULL);
     if(connect_fd < 0) {
-        log->error("accept socket error, %d %s", errno, strerror(errno));
+        log->error("accept socket error, errno = %d, %s", errno, strerror(errno));
         return false;
     }
 
@@ -64,7 +64,7 @@ bool Tcp::accept(RemoteInfo &info) {
 bool Tcp::listen(int maxCount) {
     int result = ::listen(get_fd(), maxCount);
     if(result < 0) {
-        log->error("listen socket error, %d %s", errno, strerror(errno));
+        log->error("listen socket error, errno = %d, %s", errno, strerror(errno));
         return false;
     }
     log->info("listen success.");
@@ -75,7 +75,7 @@ bool Tcp::connect(const char *ip, uint16_t port) {
     createSockAddr(remote_addr, ip, port);
     int result = ::connect(fd, (sockaddr*)&remote_addr, sizeof(remote_addr));
     if(result < 0) {
-        log->error("create socket error, %d %s", errno, strerror(errno));
+        log->error("create socket error, errno = %d, %s", errno, strerror(errno));
         return false;
     }
     return true;
