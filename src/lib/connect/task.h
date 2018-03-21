@@ -28,6 +28,8 @@ namespace qwb {
         virtual void forceDestructEvent(ConnectPool *manager) {
 
         }
+
+        bool removeAble = true;
     };
 
     enum TaskEvents {

@@ -11,7 +11,7 @@ void InnerPipeHandleTask::readEvent(ConnectPool *manager) {
     int result = FeedUtils::readMessage(action, ctx);
     if(result <= 0) {
         if(result == -1) {
-            log->warn("result == -1.");
+            log->error("read fd = %d, error = %d, %s", ctx->pipeFd, errno, strerror(errno));
         }
         manager->removeById(this, ctx->consumerId);
         return;
@@ -67,11 +67,11 @@ void InnerPipeHandleTask::destructEvent(ConnectPool *manager) {
     manager->getEpollRun(ctx->consumerId).reset();
     ctx->reset(); //清空ctx
 
-    log->info("pipe DISCONNECT.");
+    log->info("pipe DISCONNECT. fd = ", fd);
     ::close(fd); //所有的task在析构的时候记得关闭fd
 }
 
 void InnerPipeHandleTask::forceDestructEvent(ConnectPool *manager) {
-    log->info("force, pipe DISCONNECT.");
+    log->info("force, pipe DISCONNECT. fd = ", fd);
     ::close(fd);
 }

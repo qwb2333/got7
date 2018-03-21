@@ -14,12 +14,14 @@ namespace qwb {
 
     class Tcp {
     public:
+        static void setSocketTimeout(int fd, int timeout = 0);
+
         bool socket();
         bool bind();
         bool connect(const char *ip, uint16_t port);
         void close();
         bool accept(RemoteInfo &info);
-        bool listen(int maxCount = 128);
+        bool listen(int maxCount = 1024);
 
         int get_fd() const {
             return fd;

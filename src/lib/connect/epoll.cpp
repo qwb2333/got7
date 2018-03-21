@@ -5,7 +5,10 @@ void EpollRun::reset() {
     log->warn("EpollRun reset begin.");
     auto iter = fdMap.begin();
     while(iter != fdMap.end()) {
-        remove(iter->second, true);
+        // 有些fd,是不允许随便remove的
+        if(iter->second->removeAble) {
+            remove(iter->second, true);
+        }
         iter = fdMap.begin();
     }
 }

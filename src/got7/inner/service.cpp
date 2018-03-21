@@ -29,8 +29,8 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
         epollRun.loopOnce();
 
         uint64_t nowTime = Utils::getTimeNow();
-        if(nowTime - ctx->lastReadTime > 50) {
-            // 有50秒没有进行过数据的交互,发送一个ACK包过去作为心跳包
+        if(nowTime - ctx->lastReadTime > 180) {
+            // 有180秒没有进行过数据的交互,发送一个ACK包过去作为心跳包
             auto action = FeedUtils::createAck();
             FeedUtils::sendAction(action, ctx->pipeFd);
             log->info("send ACK.");
@@ -49,6 +49,7 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
             continue;
         }
 
+        log->info("wait for PIPE.");
         auto action = FeedUtils::createPipe(consumerId);
         if(!FeedUtils::sendAction(action, pipeFd)) {
             log->warn("send PIPE failed.sleep 10s.");
@@ -57,7 +58,10 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
         }
 
         ctx->reset(); ctx->pipeFd = pipeFd;
+        Tcp::setSocketTimeout(pipeFd, 10);
         FeedUtils::readMessage(action, ctx);
+        Tcp::setSocketTimeout(pipeFd); //取消超时
+
         if(action.option() == idl::FeedOption::ACK) {
             return true; // 成功连接
         }

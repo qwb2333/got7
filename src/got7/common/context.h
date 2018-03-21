@@ -15,13 +15,23 @@ namespace got7 {
 
         uint64_t lastReadTime;
 
-        CtxBase(int consumerId = 0):consumerId(consumerId){}
+        CtxBase(int consumerId = 0):consumerId(consumerId){
+            reset();
+        }
         virtual ~CtxBase() = default;
 
         virtual void reset() {
             pipeFd = 0;
             usedCount = 0;
             protoSize = 0;
+            lastReadTime = 0;
+        }
+
+        virtual void copyFrom(CtxBase *ctx) {
+            // consumerId不复制
+            int consumerId = this->consumerId;
+            *this = *ctx;
+            this->consumerId = consumerId;
         }
     };
 }

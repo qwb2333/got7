@@ -1,6 +1,11 @@
 #include "tcp.h"
 using namespace qwb;
 
+void Tcp::setSocketTimeout(int fd, int timeout) {
+    timeval tv = {timeout, 0};
+    setsockopt(fd,SOL_SOCKET, SO_RCVTIMEO, &tv,sizeof(tv));
+}
+
 void Tcp::createSockAddr(sockaddr_in &addr_in, const char *ip, uint16_t port) {
     inet_pton(AF_INET, ip, &addr_in.sin_addr);
     addr_in.sin_family = AF_INET;
