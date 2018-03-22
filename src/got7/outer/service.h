@@ -24,6 +24,7 @@ namespace got7 {
             delete outerCtxArr;
         }
 
+        bool addRequestCenter(const char *innerProxyIp, uint16_t innerProxyPort, uint16_t outerProxyPort);
         bool prepare(uint16_t outerPipePort);
         void realRun(EpollRun &epollRun, int consumerId) override;
 

@@ -15,7 +15,7 @@ void Tcp::createSockAddr(sockaddr_in &addr_in, const char *ip, uint16_t port) {
 bool Tcp::socket() {
     int result = ::socket(AF_INET, SOCK_STREAM, 0);
     if(result < 0) {
-        log->error("create socket error, errno = %d %s", errno, strerror(errno));
+        log->error("create socket error, errno = %d, %s", errno, strerror(errno));
         return false;
     }
 
@@ -32,7 +32,7 @@ bool Tcp::bind() {
 
     int result = ::bind(fd, (sockaddr*)&local_addr, sizeof(local_addr));
     if(result < 0) {
-        log->error("build socket error, errno = %d %s", errno, strerror(errno));
+        log->error("build socket error, errno = %d, %s", errno, strerror(errno));
         return false;
     }
 

@@ -14,7 +14,7 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
 
     TcpPtr tcp = std::make_shared<Tcp>("127.0.0.1");
 
-    InnerCtx *ctx = &innerCtxVec[consumerId];
+    InnerCtx *ctx = &innerCtxArr[consumerId];
     tcp->setLogName(Utils::format("InnerServiceTcp-%d", consumerId).c_str());
     tcp->setLogLevel(LogLevel::WARN);
 

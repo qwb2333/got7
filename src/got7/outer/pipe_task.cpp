@@ -77,9 +77,9 @@ void OuterPipeHandleTask::readEvent(ConnectPool *manager) {
     int outerFd = action.fd();
 
     if(option == idl::FeedOption::DISCONNECT) {
-        log->info("recv DISCONNECT. outerFd = ", outerFd);
+        log->info("recv DISCONNECT. outerFd = %d", outerFd);
         if(!ctx->fdExists.count(outerFd)) {
-            log->info("had DISCONNECT. outerFd = ", outerFd);
+            log->info("had DISCONNECT. outerFd = %d", outerFd);
         } else {
             ::close(outerFd);
             ctx->fdExists.erase(outerFd);

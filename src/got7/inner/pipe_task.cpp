@@ -38,7 +38,7 @@ void InnerPipeHandleTask::readEvent(ConnectPool *manager) {
         ctx->fdMap[outerFd] = innerFd;
 
         TaskBase *innerRequestHandle = new InnerRequestHandleTask(ctx, innerFd, outerFd);
-        manager->add(innerRequestHandle, TaskEvents::ReadEvent);
+        manager->addById(innerRequestHandle, TaskEvents::ReadEvent, ctx->consumerId);
     } else if(option == idl::FeedOption::DISCONNECT) {
         log->info("recv DISCONNECT. outerFd = %d", action.fd());
         if(!ctx->fdMap.count(outerFd)) {

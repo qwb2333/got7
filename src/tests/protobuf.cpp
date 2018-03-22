@@ -2,21 +2,25 @@
 #include "got7/protobuf/feed.pb.h"
 using namespace idl;
 
-int main() {
-    FeedAction feedAction;
+FeedAction action;
+FeedRemoteInfo *info = nullptr;
 
-    feedAction.set_fd(23333);
-    feedAction.set_option(FeedOption::CONNECT);
-    feedAction.set_data("ceshi");
+void func() {
+    info = new FeedRemoteInfo();
+    info->set_ip("127.0.0.1");
+
+    action.set_option(FeedOption::CONNECT);
+
+    // action销毁的时候,会自动delete info
+    action.set_allocated_remoteinfo(info);
 
     const int buffSize = 1024;
     char buff[buffSize];
+    action.SerializeToArray(buff, buffSize);
+}
 
-    int len = feedAction.ByteSize();
-    feedAction.SerializeToArray(buff, buffSize);
-
-    FeedAction feedNew;
-    feedNew.ParseFromArray(buff, len);
-    std::printf("%d, %s\n", feedNew.fd(), feedNew.data().c_str());
+int main() {
+    func();
+    printf("%s\n", info->ip().c_str());
     return 0;
 }

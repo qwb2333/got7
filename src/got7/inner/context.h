@@ -6,7 +6,7 @@ namespace got7 {
     class InnerCtx: public CtxBase {
     public:
         std::map<int, int> fdMap;
-        InnerCtx(int consumerId): CtxBase(consumerId){ }
+        InnerCtx(int consumerId = 0): CtxBase(consumerId){ }
         ~InnerCtx() { }
 
         void reset() override {

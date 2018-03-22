@@ -63,3 +63,25 @@ bool OuterService::requireNewPipe(OuterCtx *ctx) {
     }
     return false;
 }
+
+
+bool OuterService::addRequestCenter(const char *innerProxyIp, uint16_t innerProxyPort, uint16_t outerProxyPort) {
+    TcpPtr tcp = std::make_shared<Tcp>("0.0.0.0", outerProxyPort);
+    tcp->setLogName("OuterRequestCenterTcp");
+    tcp->setLogLevel(LogLevel::WARN);
+
+    bool success = true;
+    success &= tcp->socket();
+    success &= tcp->bind();
+    success &= tcp->listen();
+    if(!success) {
+        log->error("socket, bind, listen failed. errno = %d, %s", errno, strerror(errno));
+        return false;
+    }
+
+    const int usedConsumerId = (acceptCount++) % threadSize;
+    OuterCtx *ctx = &outerCtxArr[usedConsumerId];
+    TaskBase *outerRequestCenterTask = new OuterRequestCenterTask(ctx, tcp, innerProxyIp, innerProxyPort);
+    this->addById(outerRequestCenterTask, TaskEvents::ReadEvent, usedConsumerId);
+    return true;
+}

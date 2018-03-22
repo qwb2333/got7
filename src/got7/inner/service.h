@@ -13,8 +13,9 @@ namespace got7 {
     public:
         InnerService(int threadSize, int epollSize)
                 :ConnectPool(threadSize, epollSize) {
+            innerCtxArr = new InnerCtx[threadSize];
             for(int i = 0; i < threadSize; i++) {
-                innerCtxVec.emplace_back(InnerCtx(i));
+                innerCtxArr[i].consumerId = i;
             }
         }
 
@@ -22,11 +23,14 @@ namespace got7 {
 
         // InnerService -> InnerPipeService & InnerRequestService
         void realRun(EpollRun &epollRun, int consumerId) override;
+        ~InnerService() {
+            delete innerCtxArr;
+        }
 
     private:
         std::string outerIp;
         uint16_t outerPipePort;
-        std::vector<InnerCtx> innerCtxVec;
+        InnerCtx *innerCtxArr;
 
         bool requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId);
     };

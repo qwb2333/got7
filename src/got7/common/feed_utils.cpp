@@ -8,10 +8,15 @@ idl::FeedAction FeedUtils::createPipe(int consumerId) {
     return action;
 }
 
-idl::FeedAction FeedUtils::createConnect(int fd) {
+idl::FeedAction FeedUtils::createConnect(int fd, const char *ip, uint16_t port) {
     idl::FeedAction action;
+    idl::FeedRemoteInfo *info = new idl::FeedRemoteInfo();
+    info->set_ip(ip);
+    info->set_port(port);
+
     action.set_fd(fd);
     action.set_option(idl::FeedOption::CONNECT);
+    action.set_allocated_remoteinfo(info);
     return action;
 }
 

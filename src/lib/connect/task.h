@@ -7,7 +7,9 @@ namespace qwb {
     class TaskBase {
     public:
         int fd;
-        virtual ~TaskBase() = default;
+        virtual ~TaskBase() {
+            fd = -1; //表示没有初始化
+        }
 
         virtual void readEvent(ConnectPool* manager) {
 

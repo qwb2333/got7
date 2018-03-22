@@ -12,7 +12,7 @@ namespace got7 {
     class FeedUtils {
     public:
         static idl::FeedAction createPipe(int consumerId);
-        static idl::FeedAction createConnect(int fd);
+        static idl::FeedAction createConnect(int fd, const char *ip, uint16_t port);
         static idl::FeedAction createDisconnect(int fd);
         static idl::FeedAction createAck();
         static void createMessage(idl::FeedAction &action, int fd, const u_char *buff, int size);
