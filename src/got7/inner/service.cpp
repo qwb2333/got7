@@ -30,14 +30,14 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
         epollRun.loopOnce();
 
         uint64_t nowTime = Utils::getTimeNow();
-        if(nowTime - ctx->lastReadTime > 180) {
+        if(ctx->pipeFd && nowTime - ctx->lastReadTime > 180) {
             // 有180秒没有进行过数据的交互,发送一个ACK包过去作为心跳包
             auto action = FeedUtils::createAck(consumerId);
             FeedUtils::sendAction(action, ctx->pipeFd);
             log->info("send ACK. consumerId = %d", consumerId);
         }
 
-        if(nowTime - ctx->lastReadTime > 600) {
+        if(ctx->pipeFd && nowTime - ctx->lastReadTime > 600) {
             // 如果过去10分钟了,还是没有一个ACK,说明这个pipeFd已经挂掉了,释放掉
             epollRun.remove(innerPipeHandleTask);
         }
@@ -56,7 +56,10 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
         }
 
         log->info("wait for PIPE.");
+
+        std::vector<idl::FeedAction> actionVec;
         auto action = FeedUtils::createPipe(consumerId);
+
         if(!FeedUtils::sendAction(action, pipeFd)) {
             log->warn("send PIPE failed.sleep 10s.");
             ::close(pipeFd); ctx->reset(); sleep(10);
@@ -65,7 +68,10 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
 
         ctx->reset(); ctx->pipeFd = pipeFd;
         Tcp::setSocketTimeout(pipeFd, 10);
-        FeedUtils::readMessage(action, ctx);
+
+        FeedUtils::readMessage(actionVec, ctx);
+        action = actionVec[0];
+
         Tcp::setSocketTimeout(pipeFd); //取消超时
 
         if(action.option() == idl::FeedOption::ACK) {

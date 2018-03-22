@@ -61,7 +61,9 @@ bool FeedUtils::sendAction(idl::FeedAction &action, int pipeFd) {
     return ret > 0;
 }
 
-int FeedUtils::readMessage(idl::FeedAction &refAction, CtxBase *ctx) {
+int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *ctx) {
+    refActionVec.clear();
+
     if(!ctx->protoSize) {
         if(ctx->usedCount >= Consts::PROTO_LEN_SIZE) {
             // buff中是有protoSize大小的,弄一下
@@ -92,9 +94,9 @@ int FeedUtils::readMessage(idl::FeedAction &refAction, CtxBase *ctx) {
     // proto内容还不足够,循环读
     int whileCount = 0;
     while(ctx->usedCount - Consts::PROTO_LEN_SIZE < ctx->protoSize) {
-        if(whileCount >= 10) {
+        if(whileCount >= 3) {
             // 理论不会循环这么多次啊
-            log->error("whileCount > 10. pipeFd = %d, protoSize = %d, whileCount = %d",
+            log->error("whileCount > 3. pipeFd = %d, protoSize = %d, whileCount = %d",
                        ctx->pipeFd, ctx->protoSize, whileCount);
         }
         int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount,
@@ -105,14 +107,25 @@ int FeedUtils::readMessage(idl::FeedAction &refAction, CtxBase *ctx) {
         whileCount++;
     }
 
-    serializeFeedAction(refAction, ctx->buff + Consts::PROTO_LEN_SIZE, ctx->protoSize);
-    int resLen = ctx->usedCount - Consts::PROTO_LEN_SIZE - ctx->protoSize;
-    int beginPos = ctx->protoSize + Consts::PROTO_LEN_SIZE;
+    int resLen = ctx->usedCount, beginPos = 0;
+    while(ctx->protoSize && beginPos + Consts::PROTO_LEN_SIZE + ctx->protoSize <= ctx->usedCount) {
+        idl::FeedAction action;
+        serializeFeedAction(action, ctx->buff + beginPos + Consts::PROTO_LEN_SIZE, ctx->protoSize);
+
+        resLen -= Consts::PROTO_LEN_SIZE + ctx->protoSize;
+        beginPos += ctx->protoSize + Consts::PROTO_LEN_SIZE;
+        refActionVec.emplace_back(action);
+
+        if(resLen < Consts::PROTO_LEN_SIZE) {
+            ctx->protoSize = 0; // 长度已经不足够了
+        } else {
+            ctx->protoSize = Utils::uCharsToUint16(ctx->buff + beginPos);
+        }
+    }
 
     for(int i = 0; i < resLen; i++) {
         ctx->buff[i] = ctx->buff[i + beginPos];
     }
-    ctx->protoSize = 0;
     ctx->usedCount = (uint16_t)resLen;
     return 1; // 表示正常返回
 }

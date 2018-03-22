@@ -18,6 +18,6 @@ namespace got7 {
         static void createMessage(idl::FeedAction &action, int fd, const u_char *buff, int size);
         static void serializeFeedAction(idl::FeedAction &action, const u_char *buff, int size);
         static bool sendAction(idl::FeedAction &action, int pipeFd);
-        static int readMessage(idl::FeedAction &refAction, CtxBase *ctx);
+        static int readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *ctx);
     };
 }

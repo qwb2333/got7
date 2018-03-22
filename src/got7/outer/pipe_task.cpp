@@ -24,14 +24,18 @@ void OuterPipeCenterManager::loopOnce() {
     OuterCtx ctx(consumerId);
     ctx.pipeFd = remoteInfo.fd;
 
-    idl::FeedAction action;
     Tcp::setSocketTimeout(ctx.pipeFd, 10); //设置超时
-    if(FeedUtils::readMessage(action, (CtxBase*)&ctx) <= 0) {
+
+    std::vector<idl::FeedAction> actionVec;
+    if(FeedUtils::readMessage(actionVec, (CtxBase*)&ctx) <= 0) {
         log->info("read PIPE failed.");
         ::close(ctx.pipeFd);
         return;
     }
+    Tcp::setSocketTimeout(ctx.pipeFd);
 
+    // 这里只需要判断第一个即可
+    idl::FeedAction action = actionVec[0];
     auto option = action.option();
     if(option == idl::FeedOption::PIPE) {
         int consumerId = action.fd();
@@ -47,9 +51,6 @@ void OuterPipeCenterManager::loopOnce() {
         std::unique_lock<std::mutex> uniqueLock(threadCtx.mutex);
         log->info("send ACK success.ready to update ctx.");
 
-        // 取消超时
-        Tcp::setSocketTimeout(ctx.pipeFd);
-
         // 把临时的ctx复制到对应线程的ctx,并唤醒
         threadCtx.copyFrom(&ctx);
         uniqueLock.unlock();
@@ -62,10 +63,9 @@ void OuterPipeCenterManager::loopOnce() {
 
 
 void OuterPipeHandleTask::readEvent(EpollRun *manager) {
-    idl::FeedAction action;
-
     int pipeFd = ctx->pipeFd;
-    int len = FeedUtils::readMessage(action, ctx);
+    std::vector<idl::FeedAction> actionVec;
+    int len = FeedUtils::readMessage(actionVec, ctx);
 
     if(len <= 0) {
         if(len == -1) {
@@ -75,45 +75,47 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
         return;
     }
 
-    int outerFd = action.fd();
-    idl::FeedOption option = action.option();
+    for(auto &action : actionVec) {
+        int outerFd = action.fd();
+        idl::FeedOption option = action.option();
 
-    if(option == idl::FeedOption::ACK) {
-        int consumerId = action.fd();
-        log->info("recv ACK. consumerId = %d", consumerId);
-        if(ctx->consumerId != consumerId) {
-            log->warn("consumerId != this->consumerId.");
-        }
-        action = FeedUtils::createAck(consumerId);
-        FeedUtils::sendAction(action, pipeFd);
-        log->info("send ACK. consumerId = %d", consumerId);
-    } else if(option == idl::FeedOption::PIPE) {
-        // 理论这里应该是不会收到PIPE的
-        log->warn("It shoud not get PIPE.");
-    } else {
-        if(!action.has_fd()) {
-            log->warn("It should have fd.");
-            return;
-        }
-
-        TaskBase *task = NULL;
-        {
-            AutoRead lock(&ctx->rwLock);
-            auto iter = ctx->fdMap.find(outerFd);
-            if(iter == ctx->fdMap.end()) {
-                log->info("had DISCONNECT. outerFd = %d", outerFd);
+        if(option == idl::FeedOption::ACK) {
+            int consumerId = action.fd();
+            log->info("recv ACK. consumerId = %d", consumerId);
+            if(ctx->consumerId != consumerId) {
+                log->warn("consumerId != this->consumerId.");
+            }
+            action = FeedUtils::createAck(consumerId);
+            FeedUtils::sendAction(action, pipeFd);
+            log->info("send ACK. consumerId = %d", consumerId);
+        } else if(option == idl::FeedOption::PIPE) {
+            // 理论这里应该是不会收到PIPE的
+            log->warn("It shoud not get PIPE.");
+        } else {
+            if(!action.has_fd()) {
+                log->warn("It should have fd.");
                 return;
             }
-            task = iter->second;
-        }
+
+            TaskBase *task = NULL;
+            {
+                AutoRead lock(&ctx->rwLock);
+                auto iter = ctx->fdMap.find(outerFd);
+                if(iter == ctx->fdMap.end()) {
+                    log->info("had DISCONNECT. outerFd = %d", outerFd);
+                    return;
+                }
+                task = iter->second;
+            }
 
 
-        if(option == idl::FeedOption::DISCONNECT) {
-            log->info("recv DISCONNECT. outerFd = %d", outerFd);
-            manager->remove(task);
-        } else if(option == idl::FeedOption::MESSAGE) {
-            log->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
-            ::write(outerFd, action.data().c_str(), action.data().length());
+            if(option == idl::FeedOption::DISCONNECT) {
+                log->info("recv DISCONNECT. outerFd = %d", outerFd);
+                manager->remove(task);
+            } else if(option == idl::FeedOption::MESSAGE) {
+                log->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
+                ::write(outerFd, action.data().c_str(), action.data().length());
+            }
         }
     }
 }

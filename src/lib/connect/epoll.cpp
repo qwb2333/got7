@@ -38,13 +38,14 @@ bool EpollRun::add(TaskBase *task, TaskEvents taskEvents) {
 bool EpollRun::remove(TaskBase *task) {
     log->info("epoll remove task: %d", task->fd);
     int r = epoll_ctl(this->epollFd, EPOLL_CTL_DEL, task->fd, NULL);
-    task->destructEvent(this);
 
-    delete task; //这个task已经不需要了
     if(r < 0) {
+        // 说明这个task已经被删掉了,就不用管它
         log->error("epoll remove error, errno = %d, %s", errno, strerror(errno));
         return false;
     }
+
+    task->destructEvent(this);
     return true;
 }
 
