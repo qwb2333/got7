@@ -18,12 +18,13 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
     tcp->setLogName(Utils::format("InnerServiceTcp-%d", consumerId).c_str());
     tcp->setLogLevel(LogLevel::WARN);
 
+    TaskBase *innerPipeHandleTask = NULL;
     while(true) {
         // 会一直尝试连接,直到成功
         if(requireNewPipe(tcp, ctx, consumerId)) {
             log->info("create new PIPE.");
-            TaskBase *innerPipeHandle = new InnerPipeHandleTask(ctx, ctx->pipeFd);
-            epollRun.add(innerPipeHandle, TaskEvents::ReadEvent);
+            innerPipeHandleTask = new InnerPipeHandleTask(ctx);
+            epollRun.add(innerPipeHandleTask, TaskEvents::ReadEvent);
         }
 
         epollRun.loopOnce();
@@ -31,9 +32,14 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
         uint64_t nowTime = Utils::getTimeNow();
         if(nowTime - ctx->lastReadTime > 180) {
             // 有180秒没有进行过数据的交互,发送一个ACK包过去作为心跳包
-            auto action = FeedUtils::createAck();
+            auto action = FeedUtils::createAck(consumerId);
             FeedUtils::sendAction(action, ctx->pipeFd);
-            log->info("send ACK.");
+            log->info("send ACK. consumerId = %d", consumerId);
+        }
+
+        if(nowTime - ctx->lastReadTime > 600) {
+            // 如果过去10分钟了,还是没有一个ACK,说明这个pipeFd已经挂掉了,释放掉
+            epollRun.remove(innerPipeHandleTask);
         }
     }
 }

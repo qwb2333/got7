@@ -2,7 +2,7 @@
 #include <sys/epoll.h>
 
 namespace qwb {
-    class ConnectPool;
+    class EpollRun;
 
     class TaskBase {
     public:
@@ -11,27 +11,21 @@ namespace qwb {
             fd = -1; //表示没有初始化
         }
 
-        virtual void readEvent(ConnectPool* manager) {
+        virtual void readEvent(EpollRun* manager) {
 
         }
 
-        virtual void writeEvent(ConnectPool* manager) {
+        virtual void writeEvent(EpollRun* manager) {
 
         }
 
-        virtual void constructEvent(ConnectPool* manager) {
+        virtual void constructEvent(EpollRun* manager) {
 
         }
 
-        virtual void destructEvent(ConnectPool* manager) {
+        virtual void destructEvent(EpollRun* manager) {
 
         }
-
-        virtual void forceDestructEvent(ConnectPool *manager) {
-
-        }
-
-        bool removeAble = true;
     };
 
     enum TaskEvents {

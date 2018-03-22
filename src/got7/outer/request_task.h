@@ -11,21 +11,23 @@ using namespace qwb;
 namespace got7 {
     class OuterRequestCenterTask : public TaskBase {
     public:
-        OuterRequestCenterTask(OuterCtx *ctx, TcpPtr tcp, const char *innerProxyIp, uint16_t innerProxyPort) {
+        OuterRequestCenterTask(OuterCtx *outerCtxArr, int consumerId,
+                               TcpPtr tcp, const char *innerProxyIp, uint16_t innerProxyPort) {
             ::srand((unsigned)time(NULL));
-            this->ctx = ctx;
             this->tcp = tcp;
             this->fd = tcp->get_fd();
+            this->consumerId = consumerId;
+            this->outerCtxArr = outerCtxArr;
             this->innerProxyIp = innerProxyIp;
             this->innerProxyPort = innerProxyPort;
         }
-        void readEvent(ConnectPool* manager) override;
-        void destructEvent(ConnectPool* manager) override;
-        void forceDestructEvent(ConnectPool *manager) override;
+        void readEvent(EpollRun *manager) override;
+        void destructEvent(EpollRun *manager) override;
 
     private:
         TcpPtr tcp;
-        OuterCtx *ctx;
+        int consumerId;
+        OuterCtx *outerCtxArr;
         const char *innerProxyIp;
         uint16_t innerProxyPort;
 
@@ -40,9 +42,9 @@ namespace got7 {
             this->ctx = ctx;
             this->fd = outerFd;
         }
-        void readEvent(ConnectPool* manager) override;
-        void destructEvent(ConnectPool* manager) override;
-        void forceDestructEvent(ConnectPool *manager) override;
+        void constructEvent(EpollRun *manager) override;
+        void readEvent(EpollRun *manager) override;
+        void destructEvent(EpollRun *manager) override;
 
     private:
         OuterCtx *ctx;

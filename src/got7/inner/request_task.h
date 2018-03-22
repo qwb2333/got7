@@ -12,9 +12,9 @@ namespace got7 {
     class InnerRequestHandleTask : public TaskBase {
     public:
         InnerRequestHandleTask(InnerCtx *ctx, int innerFd, int outerFd);
-        void readEvent(ConnectPool* manager) override;
-        void destructEvent(ConnectPool* manager) override;
-        void forceDestructEvent(ConnectPool *manager) override;
+        void constructEvent(EpollRun* manager) override;
+        void readEvent(EpollRun* manager) override;
+        void destructEvent(EpollRun* manager) override;
 
     private:
         InnerCtx *ctx;

@@ -2,7 +2,7 @@
 using namespace got7;
 
 int main() {
-    InnerService service(10, 2000);
+    InnerService service(1, 128);
     service.setOuterServiceInfo("127.0.0.1", 4001);
     service.join();
     return 0;

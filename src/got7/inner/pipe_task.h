@@ -12,10 +12,9 @@ using namespace qwb;
 namespace got7 {
     class InnerPipeHandleTask : public TaskBase {
     public:
-        InnerPipeHandleTask(InnerCtx *ctx, int fd);
-        void readEvent(ConnectPool* manager) override;
-        void destructEvent(ConnectPool *manager) override;
-        void forceDestructEvent(ConnectPool *manager) override;
+        InnerPipeHandleTask(InnerCtx *ctx);
+        void readEvent(EpollRun* manager) override;
+        void destructEvent(EpollRun *manager) override;
 
     private:
         InnerCtx *ctx;

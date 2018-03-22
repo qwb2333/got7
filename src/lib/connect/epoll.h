@@ -11,8 +11,8 @@ namespace qwb {
     public:
         virtual ~EpollRun();
         void init(ConnectPool *connectPool, int epollSize, int consumerId);
-        void add(TaskBase *task, TaskEvents taskEvents);
-        bool remove(TaskBase *task, bool force = false);
+        bool add(TaskBase *task, TaskEvents taskEvents);
+        bool remove(TaskBase *task);
         bool loopOnce();
 
         void setLogName(const char *name) {
@@ -25,14 +25,18 @@ namespace qwb {
                 log->setLevel(level);
             }
         }
-        void reset();
+        void setWaitMs(int waitMs) {
+            this->waitMs = waitMs;
+        }
+        ConnectPool* getConnectPool() {
+            return connectPool;
+        }
 
     protected:
-        const int waitMs = 5000;
+        int waitMs = 10000;
 
         int consumerId;
         int epollFd, epollSize;
-        std::map<int, TaskBase*> fdMap;
         ConnectPool *connectPool;
 
         std::vector<epoll_event> activeEvents;

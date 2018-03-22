@@ -21,7 +21,6 @@ namespace got7 {
 
         void setOuterServiceInfo(std::string outerIp, uint16_t outerPipePort);
 
-        // InnerService -> InnerPipeService & InnerRequestService
         void realRun(EpollRun &epollRun, int consumerId) override;
         ~InnerService() {
             delete innerCtxArr;

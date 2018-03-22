@@ -6,22 +6,13 @@ void ConnectPool::add(TaskBase *task, TaskEvents taskEvents) {
     epollRunPool[id].add(task, taskEvents);
 }
 
-void ConnectPool::addById(TaskBase *task, TaskEvents taskEvents, int consumerId) {
-    epollRunPool[consumerId].add(task, taskEvents);
-}
-
-void ConnectPool::remove(TaskBase *task, bool force) {
+void ConnectPool::remove(TaskBase *task) {
     int id = Utils::hash(task->fd, threadSize);
-    epollRunPool[id].remove(task, force);
-}
-
-void ConnectPool::removeById(TaskBase *task, int consumerId, bool force) {
-    epollRunPool[consumerId].remove(task, force);
+    epollRunPool[id].remove(task);
 }
 
 ConnectPool::ConnectPool(int threadSize, int epollSize) {
     this->threadSize = threadSize;
-    this->epollSize = epollSize;
 
     epollRunPool.resize((unsigned)threadSize);
     for(int i = 0; i < threadSize; i++) {

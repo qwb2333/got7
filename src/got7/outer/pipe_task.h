@@ -19,6 +19,8 @@ namespace got7 {
 
     private:
         OuterCtx *outerCtxArr;
+
+        // acceptCount暂时在这个类里没用,之后如果写了client动态添加端口,才会有用
         std::atomic<uint32_t> *acceptCount;
         int consumerId;
         TcpPtr tcp;
@@ -26,13 +28,12 @@ namespace got7 {
 
     class OuterPipeHandleTask : public TaskBase {
     public:
-        OuterPipeHandleTask(OuterCtx *ctx, int fd) {
-            this->fd = fd;
+        OuterPipeHandleTask(OuterCtx *ctx) {
             this->ctx = ctx;
+            this->fd = ctx->pipeFd;
         }
-        void readEvent(ConnectPool* manager) override;
-        void destructEvent(ConnectPool *manager) override;
-        void forceDestructEvent(ConnectPool *manager) override;
+        void readEvent(EpollRun* manager) override;
+        void destructEvent(EpollRun *manager) override;
 
     private:
         OuterCtx *ctx;

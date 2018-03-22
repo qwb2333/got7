@@ -39,16 +39,23 @@ void OuterService::realRun(EpollRun &epollRun, int consumerId) {
     epollRun.setLogName(Utils::format("OuterServiceEpoll-%d", consumerId).c_str());
     epollRun.setLogLevel(LogLevel::WARN);
 
+    TaskBase *outerPipeHandleTask = NULL;
     OuterCtx *ctx = &outerCtxArr[consumerId];
     while(true) {
         if(requireNewPipe(ctx)) {
-            log->info("get pipeId success.");
+            log->info("get pipeId success. consumerId = %d", consumerId);
 
-            TaskBase *outerPipeHandleTask = new OuterPipeHandleTask(ctx, ctx->pipeFd);
+            outerPipeHandleTask = new OuterPipeHandleTask(ctx);
             epollRun.add(outerPipeHandleTask, TaskEvents::ReadEvent);
         }
 
         epollRun.loopOnce();
+
+        uint64_t nowTime = Utils::getTimeNow();
+        if(nowTime - ctx->lastReadTime > 600) {
+            // 如果过去10分钟了,还是没有一个ACK,说明这个pipeFd已经挂掉了,释放掉
+            epollRun.remove(outerPipeHandleTask);
+        }
     }
 }
 
@@ -80,8 +87,8 @@ bool OuterService::addRequestCenter(const char *innerProxyIp, uint16_t innerProx
     }
 
     const int usedConsumerId = (acceptCount++) % threadSize;
-    OuterCtx *ctx = &outerCtxArr[usedConsumerId];
-    TaskBase *outerRequestCenterTask = new OuterRequestCenterTask(ctx, tcp, innerProxyIp, innerProxyPort);
-    this->addById(outerRequestCenterTask, TaskEvents::ReadEvent, usedConsumerId);
+    TaskBase *outerRequestCenterTask = new OuterRequestCenterTask(outerCtxArr,
+            usedConsumerId, tcp, innerProxyIp, innerProxyPort);
+    this->getEpollRun(usedConsumerId).add(outerRequestCenterTask, TaskEvents::ReadEvent);
     return true;
 }

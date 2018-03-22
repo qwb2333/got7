@@ -27,8 +27,9 @@ idl::FeedAction FeedUtils::createDisconnect(int fd) {
     return action;
 }
 
-idl::FeedAction FeedUtils::createAck() {
+idl::FeedAction FeedUtils::createAck(int consumerId) {
     idl::FeedAction action;
+    action.set_fd(consumerId);
     action.set_option(idl::FeedOption::ACK);
     return action;
 }
@@ -44,6 +45,11 @@ void FeedUtils::serializeFeedAction(idl::FeedAction &action, const u_char *buff,
 }
 
 bool FeedUtils::sendAction(idl::FeedAction &action, int pipeFd) {
+    if(!pipeFd) {
+        // ctx被清空了,pipeFd变成了0
+        return false;
+    }
+
     u_char buff[Consts::BUFF_SIZE];
     int byteSize = action.ByteSize();
 
@@ -86,10 +92,10 @@ int FeedUtils::readMessage(idl::FeedAction &refAction, CtxBase *ctx) {
     // proto内容还不足够,循环读
     int whileCount = 0;
     while(ctx->usedCount - Consts::PROTO_LEN_SIZE < ctx->protoSize) {
-        if(whileCount >= 1) {
-            // 这个情况理论是不存在的
-            log->error("whileCount > 1. pipeFd = %d, protoSize = %d", ctx->pipeFd, ctx->protoSize);
-            return 0;
+        if(whileCount >= 10) {
+            // 理论不会循环这么多次啊
+            log->error("whileCount > 10. pipeFd = %d, protoSize = %d, whileCount = %d",
+                       ctx->pipeFd, ctx->protoSize, whileCount);
         }
         int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount,
                               (unsigned)(Consts::BUFF_SIZE - ctx->usedCount));

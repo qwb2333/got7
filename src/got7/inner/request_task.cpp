@@ -8,17 +8,21 @@ InnerRequestHandleTask::InnerRequestHandleTask(InnerCtx *ctx, int innerFd, int o
     this->outerFd = outerFd;
 }
 
-void InnerRequestHandleTask::readEvent(ConnectPool *manager) {
+void InnerRequestHandleTask::readEvent(EpollRun *manager) {
     u_char buff[Consts::PAGE_SIZE];
 
     idl::FeedAction action;
     int len = (int)::read(fd, buff, Consts::PAGE_SIZE);
     if(len <= 0) {
         if(len == -1) {
-            // 这个情况没有遇到过..
-            log->warn("len == -1. fd = %d, pipeFd = %d", fd, ctx->pipeFd);
+            log->error("read fd = %d, error = %d, %s", ctx->pipeFd, errno, strerror(errno));
         }
-        manager->removeById(this, ctx->consumerId);
+
+        log->info("recv proxy DISCONNECT. send DISCONNECT. outerFd = %d", outerFd);
+        action = FeedUtils::createDisconnect(outerFd);
+        FeedUtils::sendAction(action, ctx->pipeFd);
+
+        manager->remove(this);
         return;
     }
 
@@ -27,18 +31,15 @@ void InnerRequestHandleTask::readEvent(ConnectPool *manager) {
     FeedUtils::sendAction(action, ctx->pipeFd);
 }
 
-void InnerRequestHandleTask::destructEvent(ConnectPool *manager) {
-    idl::FeedAction action = FeedUtils::createDisconnect(outerFd);
-    log->info("recv proxy DISCONNECT. send DISCONNECT. outerFd = %d", outerFd);
+void InnerRequestHandleTask::constructEvent(EpollRun *manager) {
+    log->info("add map, innerFd = %d, outerFd = %d", innerFd, outerFd);
 
-    FeedUtils::sendAction(action, ctx->pipeFd);
-    ctx->fdMap.erase(outerFd);
-    ::close(innerFd);
+    TaskBase *taskBase = this;
+    std::pair<int, TaskBase*> value(innerFd, taskBase);
+    ctx->fdMap.insert(std::make_pair(outerFd, value));
 }
 
-void InnerRequestHandleTask::forceDestructEvent(ConnectPool *manager) {
-    // 暴力退出时,不发消息给对方
-    log->info("force proxy DISCONNECT. outerFd = %d", outerFd);
+void InnerRequestHandleTask::destructEvent(EpollRun *manager) {
     ctx->fdMap.erase(outerFd);
-    ::close(innerFd);
+    ::close(fd);
 }

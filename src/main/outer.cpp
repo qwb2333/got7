@@ -2,7 +2,7 @@
 using namespace got7;
 
 int main() {
-    OuterService service(10, 2000);
+    OuterService service(1, 128);
     if(!service.prepare(4001)) {
         std::printf("run failed.");
         exit(1);

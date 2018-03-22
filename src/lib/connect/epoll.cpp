@@ -1,21 +1,7 @@
 #include "epoll.h"
 using namespace qwb;
 
-void EpollRun::reset() {
-    log->warn("EpollRun reset begin.");
-    auto iter = fdMap.begin();
-    while(iter != fdMap.end()) {
-        // 有些fd,是不允许随便remove的
-        if(iter->second->removeAble) {
-            remove(iter->second, true);
-        }
-        iter = fdMap.begin();
-    }
-}
-
-EpollRun::~EpollRun() {
-    this->reset();
-}
+EpollRun::~EpollRun() { }
 
 void EpollRun::init(ConnectPool *connectPool, int epollSize, int consumerId) {
     this->epollSize = epollSize;
@@ -32,9 +18,8 @@ void EpollRun::init(ConnectPool *connectPool, int epollSize, int consumerId) {
     }
 }
 
-void EpollRun::add(TaskBase *task, TaskEvents taskEvents) {
+bool EpollRun::add(TaskBase *task, TaskEvents taskEvents) {
     struct epoll_event event;
-    fdMap[task->fd] = task;
     event.data.ptr = task;
     event.events = taskEvents;
 
@@ -42,44 +27,30 @@ void EpollRun::add(TaskBase *task, TaskEvents taskEvents) {
     log->info("epoll add task: %d", task->fd);
     int r = epoll_ctl(this->epollFd, EPOLL_CTL_ADD, task->fd, &event);
 
-    task->constructEvent(this->connectPool);
     if(r < 0) {
         log->error("epoll add error %d %s", errno, strerror(errno));
-    }
-}
-
-bool EpollRun::remove(TaskBase *task, bool force) {
-    struct epoll_event event;
-    int fd = task->fd;
-
-    auto iter = fdMap.find(fd);
-    if(iter == fdMap.end()) {
-        log->warn("not found in fdMap, fd = %d", fd);
         return false;
     }
+    task->constructEvent(this);
+    return true;
+}
 
-    log->info("epoll remove task: %d", fd);
-    event.data.ptr = &iter->second;
-    int r = epoll_ctl(this->epollFd, EPOLL_CTL_DEL, fd, &event);
-    fdMap.erase(fd);
+bool EpollRun::remove(TaskBase *task) {
+    log->info("epoll remove task: %d", task->fd);
+    int r = epoll_ctl(this->epollFd, EPOLL_CTL_DEL, task->fd, NULL);
+    task->destructEvent(this);
 
-    if(force) {
-        task->forceDestructEvent(this->connectPool);
-    }
-    else {
-        task->destructEvent(this->connectPool);
-    }
-
+    delete task; //这个task已经不需要了
     if(r < 0) {
         log->error("epoll remove error, errno = %d, %s", errno, strerror(errno));
+        return false;
     }
-    delete task; //这个task已经不需要了
     return true;
 }
 
 bool EpollRun::loopOnce() {
-    // 一次epoll操作最多60s
-    int num = epoll_wait(this->epollFd, &activeEvents[0], this->epollSize, 60000);
+    // 一次epoll操作最多waitMS s
+    int num = epoll_wait(this->epollFd, &activeEvents[0], this->epollSize, this->waitMs);
     if(num < 0) {
         log->error("epoll wait error, errno = %d, %s", errno, strerror(errno));
     }
@@ -93,11 +64,11 @@ bool EpollRun::loopOnce() {
         if(events & EPOLLIN) {
             success = true;
             log->info("fd: %d, EPOLLIN", task->fd);
-            task->readEvent(this->connectPool);
+            task->readEvent(this);
         } else if(events & EPOLLOUT) {
             success = true;
             log->info("fd: %d, EPOLLOUT", task->fd);
-            task->writeEvent(this->connectPool);
+            task->writeEvent(this);
         }
 
         if(events & EPOLLHUP) {

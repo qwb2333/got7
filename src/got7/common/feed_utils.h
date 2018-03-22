@@ -14,7 +14,7 @@ namespace got7 {
         static idl::FeedAction createPipe(int consumerId);
         static idl::FeedAction createConnect(int fd, const char *ip, uint16_t port);
         static idl::FeedAction createDisconnect(int fd);
-        static idl::FeedAction createAck();
+        static idl::FeedAction createAck(int consumerId);
         static void createMessage(idl::FeedAction &action, int fd, const u_char *buff, int size);
         static void serializeFeedAction(idl::FeedAction &action, const u_char *buff, int size);
         static bool sendAction(idl::FeedAction &action, int pipeFd);

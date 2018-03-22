@@ -10,9 +10,7 @@ namespace qwb {
         virtual ~ConnectPool() = default;
 
         void add(TaskBase *task, TaskEvents taskEvents);
-        void addById(TaskBase *task, TaskEvents taskEvents, int consumerId);
-        void remove(TaskBase *task, bool force = false);
-        void removeById(TaskBase *task, int consumerId, bool force = false);
+        void remove(TaskBase *task);
         void join();
 
         EpollRun &getEpollRun(int consumerId) {
@@ -23,7 +21,7 @@ namespace qwb {
         }
 
     protected:
-        int epollSize, threadSize;
+        int threadSize;
         std::vector<EpollRun> epollRunPool;
 
         virtual void realRun(EpollRun &epollRun, int id);
