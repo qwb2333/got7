@@ -71,6 +71,7 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
         if(len == -1) {
             LOG->error("read fd = %d, errno = %d, %s", pipeFd, errno, strerror(errno));
         }
+        LOG->info("recv pipe DISCONNECT. pipeFd = %d", pipeFd);
         manager->remove(this);
         return;
     }
@@ -93,7 +94,7 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
             LOG->warn("It shoud not get PIPE.");
         } else {
             if(!action.has_fd()) {
-                LOG->warn("It should have fd.");
+                LOG->warn("It should have fd. FeedOption = %d", (int)action.option());
                 return;
             }
 
@@ -114,7 +115,12 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
                 manager->remove(task);
             } else if(option == idl::FeedOption::MESSAGE) {
                 LOG->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
-                ::write(outerFd, action.data().c_str(), action.data().length());
+                len = (int)Tcp::write(outerFd, (void*)action.data().c_str(), (unsigned)action.data().length());
+                if(len <= 0) {
+                    // 这个时候outerFd可能已经关闭了,直接删掉
+                    LOG->info("write failed. outerFd = %d", outerFd);
+                    manager->remove(task);
+                }
             }
         }
     }
@@ -127,7 +133,9 @@ void OuterPipeHandleTask::destructEvent(EpollRun *manager) {
         // 释放ctx里所有的request连接
         auto iter = ctx->fdMap.begin();
         while(iter != ctx->fdMap.end()) {
-            TaskBase *task = iter->second;
+            OuterRequestHandleTask *task = (OuterRequestHandleTask*)iter->second;
+
+            task->hadLocked = true;
             manager->remove(task);
 
             iter = ctx->fdMap.begin();

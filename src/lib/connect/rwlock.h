@@ -3,19 +3,6 @@
 #include <pthread.h>
 
 namespace qwb {
-    class AutoLock {
-        pthread_mutex_t *_lock;
-    public:
-        AutoLock(pthread_mutex_t *lock) {
-            _lock = lock;
-            pthread_mutex_lock(_lock);
-        }
-
-        ~AutoLock() {
-            pthread_mutex_unlock(_lock);
-        }
-    };
-
     class RWLock {
         pthread_rwlock_t _lock;
     public:

@@ -46,6 +46,7 @@ bool EpollRun::remove(TaskBase *task) {
     }
 
     task->destructEvent(this);
+    delete task;
     return true;
 }
 

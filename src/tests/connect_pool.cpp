@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <thread>
-#include "lib/common/exit.h"
+#include "lib/common/sig.h"
 #include "lib/common/config.h"
 #include "lib/connect/task.h"
 #include "lib/connect/connect_pool.h"
@@ -28,7 +28,7 @@ public:
         this->fd = fd;
         this->name = name;
 
-        log->info("TaskTest init.");
+        LOG->info("TaskTest init.");
     }
 
 private:

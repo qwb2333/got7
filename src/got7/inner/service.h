@@ -1,6 +1,7 @@
 #pragma once
 #include "lib/connect/tcp.h"
 #include "lib/common/utils.h"
+#include "lib/common/sig.h"
 #include "lib/connect/connect_pool.h"
 #include "got7/inner/pipe_task.h"
 #include "got7/common/const.h"
@@ -17,6 +18,7 @@ namespace got7 {
             for(int i = 0; i < threadSize; i++) {
                 innerCtxArr[i].consumerId = i;
             }
+            Signal::ignoreSigPipe();
         }
 
         void setOuterServiceInfo(std::string outerIp, uint16_t outerPipePort);

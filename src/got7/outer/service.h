@@ -2,6 +2,7 @@
 #include <atomic>
 #include "lib/connect/tcp.h"
 #include "lib/common/utils.h"
+#include "lib/common/sig.h"
 #include "lib/connect/connect_pool.h"
 #include "got7/outer/pipe_task.h"
 #include "got7/common/const.h"
@@ -18,6 +19,7 @@ namespace got7 {
             for(int i = 0; i < threadSize; i++) {
                 outerCtxArr[i].consumerId = i;
             }
+            Signal::ignoreSigPipe();
         }
 
         ~OuterService() {

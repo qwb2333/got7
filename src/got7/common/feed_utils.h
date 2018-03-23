@@ -1,4 +1,5 @@
 #pragma once
+#include "lib/connect/tcp.h"
 #include "lib/common/base.h"
 #include "lib/common/utils.h"
 #include "lib/common/logging.h"
@@ -17,7 +18,7 @@ namespace got7 {
         static idl::FeedAction createAck(int consumerId);
         static void createMessage(idl::FeedAction &action, int fd, const u_char *buff, int size);
         static void serializeFeedAction(idl::FeedAction &action, const u_char *buff, int size);
-        static bool sendAction(idl::FeedAction &action, int pipeFd);
+        static int sendAction(idl::FeedAction &action, int pipeFd);
         static int readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *ctx);
     };
 }

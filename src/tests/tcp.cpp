@@ -1,5 +1,5 @@
 #include <thread>
-#include "lib/common/exit.h"
+#include "lib/common/sig.h"
 #include "lib/connect/tcp.h"
 using namespace qwb;
 
@@ -56,7 +56,7 @@ int main() {
 
         for(int i = 0; i < 10; i++) {
             sprintf(buff, "i = %d\n", i);
-            int len = (int)::write(fd, buff, strlen(buff));
+            int len = (int)Tcp::write(fd, buff, strlen(buff));
             if(len <= 0) {
                 log->info("client error.");
                 break;

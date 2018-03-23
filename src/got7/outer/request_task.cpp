@@ -45,7 +45,7 @@ void OuterRequestHandleTask::readEvent(EpollRun *manager) {
     u_char buff[Consts::PAGE_SIZE];
 
     idl::FeedAction action;
-    int len = (int)::read(fd, buff, Consts::PAGE_SIZE);
+    int len = (int)Tcp::read(fd, buff, Consts::PAGE_SIZE);
     if(len <= 0) {
         if(len == -1) {
             LOG->error("read fd = %d, errno = %d, %s", ctx->pipeFd, errno, strerror(errno));
@@ -65,9 +65,12 @@ void OuterRequestHandleTask::readEvent(EpollRun *manager) {
 }
 
 void OuterRequestHandleTask::destructEvent(EpollRun *manager) {
-    {
+    if(this->hadLocked) {
+        ctx->fdMap.erase(fd);
+    } else {
         AutoWrite lock(&ctx->rwLock);
         ctx->fdMap.erase(fd);
     }
+    LOG->info("OuterRequestHandleTask closed. fd = %d", fd);
     ::close(fd);
 }
