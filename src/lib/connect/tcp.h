@@ -38,6 +38,43 @@ namespace qwb {
             createSockAddr(local_addr, ip, port);
         }
 
+        static int read(int fd, void* buff, unsigned buffSize) {
+            int count = 0;
+            while(count <= 100) {
+                int ret = (int)::read(fd, buff, buffSize);
+
+                if(ret >= 0) {
+                    return ret;
+                } else if(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) {
+                    LOG->warn("read wait. sleep 0.1s. errno = %d, %s", errno, strerror(errno));
+                    count++; usleep(100);
+                    continue;
+                }
+                LOG->error("TCP::read, result = %d, errno = %d, %s", ret, errno, strerror(errno));
+                return ret;
+            }
+            return 0;
+        }
+
+        static int write(int fd, void* buff, unsigned buffSize) {
+            int count = 0;
+            while(count <= 100) {
+                int ret = (int)::write(fd, buff, buffSize);
+
+                if(ret >= 0) {
+                    return ret;
+                } else if(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) {
+                    LOG->warn("write wait. sleep 0.1s. errno = %d, %s", errno, strerror(errno));
+                    count++; usleep(100);
+                    continue;
+                }
+                LOG->error("TCP::write, result = %d, errno = %d, %s", ret, errno, strerror(errno));
+                return ret;
+            }
+            return 0; //等待次数太多,直接断开
+        }
+
+
     private:
         int fd;
         sockaddr_in local_addr, remote_addr;

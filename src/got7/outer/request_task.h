@@ -38,9 +38,12 @@ namespace got7 {
 
     class OuterRequestHandleTask : public TaskBase {
     public:
+        bool hadLocked;
+
         OuterRequestHandleTask(OuterCtx *ctx, int outerFd) {
             this->ctx = ctx;
             this->fd = outerFd;
+            this->hadLocked = false;
         }
         void constructEvent(EpollRun *manager) override;
         void readEvent(EpollRun *manager) override;

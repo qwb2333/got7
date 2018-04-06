@@ -44,7 +44,7 @@ void FeedUtils::serializeFeedAction(idl::FeedAction &action, const u_char *buff,
     action.ParseFromArray(buff, size);
 }
 
-bool FeedUtils::sendAction(idl::FeedAction &action, int pipeFd) {
+int FeedUtils::sendAction(idl::FeedAction &action, int pipeFd) {
     if(!pipeFd) {
         // ctx被清空了,pipeFd变成了0
         return false;
@@ -57,8 +57,8 @@ bool FeedUtils::sendAction(idl::FeedAction &action, int pipeFd) {
     u_char *ptr = buff, *limit = buff + Consts::BUFF_SIZE;
     Utils::uint16ToUChars((uint16_t)byteSize, ptr); ptr += Consts::PROTO_LEN_SIZE;
     action.SerializeToArray(ptr, (int)(limit - ptr)); ptr += byteSize;
-    int ret = (int)::write(pipeFd, buff, ptr - buff);
-    return ret > 0;
+    int ret = (int)Tcp::write(pipeFd, buff, (unsigned)(ptr - buff));
+    return ret;
 }
 
 int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *ctx) {
@@ -69,7 +69,7 @@ int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *
             // buff中是有protoSize大小的,弄一下
             ctx->protoSize = Utils::uCharsToUint16(ctx->buff);
         } else {
-            int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount,
+            int len = Tcp::read(ctx->pipeFd, ctx->buff + ctx->usedCount,
                                   (unsigned)(Consts::BUFF_SIZE - ctx->usedCount));
             if(len <= 0) return len;
             ctx->usedCount += len;
@@ -86,9 +86,6 @@ int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *
             LOG->error("usedCount > pageSize. pipeFd = %d.", ctx->pipeFd);
             return 0; // 认为需要断开
         }
-
-        // 更新lastReadTime时间
-        ctx->lastReadTime = Utils::getTimeNow();
     }
 
     // proto内容还不足够,循环读
@@ -99,7 +96,7 @@ int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *
             LOG->error("whileCount > 3. pipeFd = %d, protoSize = %d, whileCount = %d",
                        ctx->pipeFd, ctx->protoSize, whileCount);
         }
-        int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount,
+        int len = Tcp::read(ctx->pipeFd, ctx->buff + ctx->usedCount,
                               (unsigned)(Consts::BUFF_SIZE - ctx->usedCount));
         if(len <= 0) return len;
 
@@ -127,5 +124,9 @@ int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *
         ctx->buff[i] = ctx->buff[i + beginPos];
     }
     ctx->usedCount = (uint16_t)resLen;
+
+    // 更新lastReadTime时间
+    ctx->lastReadTime = Utils::getTimeNow();
+
     return 1; // 表示正常返回
 }

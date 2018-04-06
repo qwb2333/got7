@@ -53,7 +53,8 @@ void OuterService::realRun(EpollRun &epollRun, int consumerId) {
 
         uint64_t nowTime = Utils::getTimeNow();
         if(ctx->pipeFd && nowTime - ctx->lastReadTime > 600) {
-            // 如果过去10分钟了,还是没有一个ACK,说明这个pipeFd已经挂掉了,释放掉
+            // 如果过去10分钟了,还是没有收到任何数据,说明这个pipeFd已经挂掉了,释放掉
+            LOG->info("lastReadTime over 600s. close innerPipeHandleTask.");
             epollRun.remove(outerPipeHandleTask);
         }
     }

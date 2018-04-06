@@ -1,7 +1,7 @@
 #include <thread>
 #include "got7/protobuf/feed.pb.h"
 #include "lib/connect/tcp.h"
-#include "lib/common/exit.h"
+#include "lib/common/sig.h"
 #include "lib/common/utils.h"
 using namespace qwb;
 
@@ -83,14 +83,14 @@ public:
 
                 if(ctx->usedCount < protoLenSize) {
                     // 这个情况非常奇葩, 应该不会出现才对
-                    log->error("can't get protoSize, pipeFd = %d.", ctx->pipeFd);
+                    LOG->error("can't get protoSize, pipeFd = %d.", ctx->pipeFd);
                     return 0; // 认为需要断开
                 }
                 ctx->protoSize = Utils::uCharsToUint16(ctx->buff);
             }
             if(ctx->protoSize > pageSize + 128) {
                 // 这个情况理论是不存在的, protoSize理论只会稍微大于pageSize,因为protobuf中除了data还带有一些其他数据
-                log->error("usedCount > pageSize. pipeFd = %d.", ctx->pipeFd);
+                LOG->error("usedCount > pageSize. pipeFd = %d.", ctx->pipeFd);
                 return 0; // 认为需要断开
             }
         }
@@ -100,7 +100,7 @@ public:
         while(ctx->usedCount - protoLenSize < ctx->protoSize) {
             if(whileCount >= 1) {
                 // 这个情况理论是不存在的
-                log->error("whileCount > 1. pipeFd = %d", ctx->pipeFd);
+                LOG->error("whileCount > 1. pipeFd = %d", ctx->pipeFd);
                 return 0;
             }
             int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount, (unsigned)(buffSize - ctx->usedCount));
@@ -134,7 +134,7 @@ public:
         tcp->close();
     }
     void run() {
-        log->setName("InnerMainHandle");
+        LOG->setName("InnerMainHandle");
 
         tcp->socket();
         tcp->bind();
@@ -145,7 +145,7 @@ public:
 
         idl::FeedAction action = FeedUtils::createPipe();
         FeedUtils::sendAction(action, ctx->pipeFd);
-        log->info("send PIPE.");
+        LOG->info("send PIPE.");
 
         func_main_handle(ctx);
     }
@@ -161,9 +161,9 @@ private:
         while(true) {
             int len = FeedUtils::readMessage(action, ctx);
             if(len == -1) {
-                log->error("read fd = %d; %d; %s", pipeFd, errno, strerror(errno));
+                LOG->error("read fd = %d; %d; %s", pipeFd, errno, strerror(errno));
             } else if(len == 0) {
-                log->info("pipe DISCONNECT.");
+                LOG->info("pipe DISCONNECT.");
                 ::close(pipeFd);
                 break;
             }
@@ -172,7 +172,7 @@ private:
             int outerFd = action.fd();
 
             if(option == idl::FeedOption::CONNECT) {
-                log->info("recv CONNECT.");
+                LOG->info("recv CONNECT.");
 
                 TcpPtr client = std::make_shared<Tcp>("127.0.0.1");
                 client->setLogLevel(LogLevel::ERROR);
@@ -180,28 +180,28 @@ private:
                 client->connect(proxyIp, proxyPort);
                 int innerFd = client->get_fd();
 
-                log->info("add map, innerFd = %d, outerFd = %d", innerFd, outerFd);
+                LOG->info("add map, innerFd = %d, outerFd = %d", innerFd, outerFd);
                 fdMap[outerFd] = innerFd;
 
                 std::thread thInnerHandle([this, innerFd, outerFd, pipeFd, &fdMap](){
-                    log->setName("InnerHandle");
+                    LOG->setName("InnerHandle");
                     this->func_handle(innerFd, outerFd, pipeFd, fdMap);
                 });
                 thInnerHandle.detach();
             } else if(option == idl::FeedOption::DISCONNECT) {
-                log->info("recv DISCONNECT.");
+                LOG->info("recv DISCONNECT.");
                 if(!fdMap.count(outerFd)) {
-                    log->info("had DISCONNECT.");
+                    LOG->info("had DISCONNECT.");
                 } else {
                     int innerFd = fdMap[outerFd];
                     ::close(innerFd);
                     fdMap.erase(outerFd);
                 }
             } else if(option == idl::FeedOption::MESSAGE) {
-                log->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
+                LOG->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
                 // 收到Message的消息, 直接写到proty_port里去
                 if(!fdMap[outerFd]) {
-                    log->info("had DISCONNECT.");
+                    LOG->info("had DISCONNECT.");
                 } else {
                     int innerFd = fdMap[outerFd];
                     ::write(innerFd, action.data().c_str(), action.data().length());
@@ -218,18 +218,18 @@ private:
             int len = (int)::read(innerFd, buff, pageSize);
             if(len == -1) {
                 if(errno != badFdErrno) {
-                    log->error("read fd = %d; %d; %s", innerFd, errno, strerror(errno));
+                    LOG->error("read fd = %d; %d; %s", innerFd, errno, strerror(errno));
                 }
                 return;
             }else if(len == 0) {
-                log->info("recv proxy DISCONNECT. send DISCONNECT.");
+                LOG->info("recv proxy DISCONNECT. send DISCONNECT.");
                 action = FeedUtils::createDisconnect(outerFd);
                 FeedUtils::sendAction(action, pipeFd);
                 fdMap.erase(outerFd);
                 ::close(innerFd);
                 return;
             } else {
-                log->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
+                LOG->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
                 FeedUtils::createMessage(action, outerFd, buff, len);
                 FeedUtils::sendAction(action, pipeFd);
             }
@@ -251,12 +251,12 @@ public:
     }
 
     void run() {
-        log->setName("OuterMainHandle");
+        LOG->setName("OuterMainHandle");
 
         tcpMain->socket();
         tcpMain->bind();
         tcpMain->listen();
-        log->info("wait accept.");
+        LOG->info("wait accept.");
 
         RemoteInfo remoteInfo;
 
@@ -265,7 +265,7 @@ public:
 
 
         CtxPtr ctx = std::make_shared<Ctx>(remoteInfo.fd);
-        log->info("get PIPE. fd = %d", ctx->pipeFd);
+        LOG->info("get PIPE. fd = %d", ctx->pipeFd);
 
         func_main_handle(ctx, tcpPart);
     }
@@ -276,7 +276,7 @@ private:
         int pipeFd = ctx->pipeFd;
 
         std::thread thOuterPartHandle([this, pipeFd, &tcpPart, &fdExists](){
-            log->setName("OuterPartHandle");
+            LOG->setName("OuterPartHandle");
 
             tcpPart->socket();
             tcpPart->bind();
@@ -286,10 +286,10 @@ private:
             idl::FeedAction action;
             while(true) {
                 if(!tcpPart->accept(remoteInfo)) {
-                    log->info("part DISCONNECT.");
+                    LOG->info("part DISCONNECT.");
                     break;
                 }
-                log->info("new accept, fd = %d, %s:%d", remoteInfo.fd, remoteInfo.ip.c_str(), (int)remoteInfo.port);
+                LOG->info("new accept, fd = %d, %s:%d", remoteInfo.fd, remoteInfo.ip.c_str(), (int)remoteInfo.port);
                 int outerFd = remoteInfo.fd;
 
                 fdExists.insert(outerFd);
@@ -303,7 +303,7 @@ private:
 
                 FeedUtils::sendAction(action, pipeFd);
                 std::thread thOuterHandle([this, outerFd, pipeFd, &fdExists](){
-                    log->setName("OuterHandle");
+                    LOG->setName("OuterHandle");
                     this->func_handle(outerFd, pipeFd, fdExists);
                 });
                 thOuterHandle.detach();
@@ -315,11 +315,11 @@ private:
         while(true) {
             int len = FeedUtils::readMessage(action, ctx);
             if(len == -1) {
-                log->error("read fd = %d; %d; %s", pipeFd, errno, strerror(errno));
+                LOG->error("read fd = %d; %d; %s", pipeFd, errno, strerror(errno));
                 ::close(pipeFd);
                 break;
             } else if(len == 0) {
-                log->info("pipe DISCONNECT.");
+                LOG->info("pipe DISCONNECT.");
                 ::close(pipeFd);
                 break;
             }
@@ -328,24 +328,24 @@ private:
             int outerFd = action.fd();
 
             if(option == idl::FeedOption::DISCONNECT) {
-                log->info("recv DISCONNECT.");
+                LOG->info("recv DISCONNECT.");
                 if(!fdExists.count(outerFd)) {
-                    log->info("had DISCONNECT.");
+                    LOG->info("had DISCONNECT.");
                 } else {
                     ::close(outerFd);
                     fdExists.erase(outerFd);
                 }
             } else if(option == idl::FeedOption::MESSAGE) {
-                log->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
+                LOG->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
                 // 收到Message的消息, 直接写到proty_port里去
                 if(!fdExists.count(outerFd)) {
-                    log->info("had DISCONNECT.");
+                    LOG->info("had DISCONNECT.");
                 } else {
                     ::write(outerFd, action.data().c_str(), action.data().length());
                 }
             } else if(option == idl::FeedOption::PIPE) {
                 int consumerId = action.fd();
-                log->info("recv PIPE. consumerId = %d", consumerId);
+                LOG->info("recv PIPE. consumerId = %d", consumerId);
                 action = FeedUtils::createAck(consumerId);
                 FeedUtils::sendAction(action, pipeFd);
             }
@@ -359,19 +359,19 @@ private:
             int len = (int)::read(outerFd, buff, pageSize);
             if(len == -1) {
                 if(errno != badFdErrno) {
-                    log->error("read fd = %d; %d; %s", outerFd, errno, strerror(errno));
+                    LOG->error("read fd = %d; %d; %s", outerFd, errno, strerror(errno));
                 }
                 ::close(outerFd);
                 return;
             }else if(len == 0) {
-                log->info("recv proxy DISCONNECT. send DISCONNECT.");
+                LOG->info("recv proxy DISCONNECT. send DISCONNECT.");
                 action = FeedUtils::createDisconnect(outerFd);
                 FeedUtils::sendAction(action, pipeFd);
                 fdExists.erase(outerFd);
                 ::close(outerFd);
                 return;
             } else {
-                log->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
+                LOG->info("recv proxy MESSAGE, len = %d; send MESSAGE.", len);
                 FeedUtils::createMessage(action, outerFd, buff, len);
                 FeedUtils::sendAction(action, pipeFd);
             }

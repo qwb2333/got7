@@ -12,6 +12,7 @@ int main() {
     success &= service.addRequestCenter("10.64.70.148", 80, 4002);
     success &= service.addRequestCenter("119.29.233.22", 4928, 4003);
     success &= service.addRequestCenter("97.64.35.146", 443, 4004);
+    success &= service.addRequestCenter("127.0.0.1", 1080, 4005);
     if(!success) {
         std::printf("run failed.");
         exit(1);

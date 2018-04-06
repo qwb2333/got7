@@ -13,6 +13,7 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
         if(result == -1) {
             LOG->error("read fd = %d, error = %d, %s", ctx->pipeFd, errno, strerror(errno));
         }
+        LOG->info("recv pipe DISCONNECT. pipeFd = %d", fd);
         manager->remove(this);
         return;
     }
@@ -33,7 +34,7 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
             if(!client->connect(info.ip().c_str(), (uint16_t)info.port())) {
                 LOG->info("connect %s:%d failed.", info.ip().c_str(), info.port());
                 ::close(innerFd);
-                return;
+                continue;
             }
 
             TaskBase *innerRequestHandle = new InnerRequestHandleTask(ctx, innerFd, outerFd);
@@ -56,7 +57,12 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
                 LOG->info("had DISCONNECT. outerFd = %d", action.fd());
             } else {
                 int innerFd = kv->second.first;
-                ::write(innerFd, action.data().c_str(), action.data().length());
+                int len = (int)Tcp::write(innerFd, (void*)action.data().c_str(), (unsigned)action.data().length());
+                if(len <= 0) {
+                    // 这个时候outerFd可能已经关闭了,直接删掉
+                    LOG->info("write failed. outerFd = %d", outerFd);
+                    manager->remove(kv->second.second);
+                }
             }
         } else if(option == idl::FeedOption::ACK) {
             int consumerId = action.fd();
@@ -76,6 +82,5 @@ void InnerPipeHandleTask::destructEvent(EpollRun *manager) {
     }
 
     ctx->reset(); //清空ctx
-    LOG->info("pipe DISCONNECT. pipeFd = %d", fd);
     ::close(fd);
 }

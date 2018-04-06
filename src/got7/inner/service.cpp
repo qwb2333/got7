@@ -33,12 +33,18 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
         if(ctx->pipeFd && nowTime - ctx->lastReadTime > 180) {
             // 有180秒没有进行过数据的交互,发送一个ACK包过去作为心跳包
             auto action = FeedUtils::createAck(consumerId);
-            FeedUtils::sendAction(action, ctx->pipeFd);
-            LOG->info("send ACK. consumerId = %d", consumerId);
+            if(FeedUtils::sendAction(action, ctx->pipeFd) <= 0) {
+                // 这个pipdFd不行了
+                LOG->warn("send ACK failed. consumerId = %d", consumerId);
+                this->remove(innerPipeHandleTask);
+            } else {
+                LOG->info("send ACK. consumerId = %d", consumerId);
+            }
         }
 
         if(ctx->pipeFd && nowTime - ctx->lastReadTime > 600) {
-            // 如果过去10分钟了,还是没有一个ACK,说明这个pipeFd已经挂掉了,释放掉
+            // 如果过去10分钟了,还是没有任何数据,说明这个pipeFd已经挂掉了,释放掉
+            LOG->info("lastReadTime over 600s. close innerPipeHandleTask.");
             epollRun.remove(innerPipeHandleTask);
         }
     }
@@ -60,7 +66,7 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
         std::vector<idl::FeedAction> actionVec;
         auto action = FeedUtils::createPipe(consumerId);
 
-        if(!FeedUtils::sendAction(action, pipeFd)) {
+        if(FeedUtils::sendAction(action, pipeFd) <= 0) {
             LOG->warn("send PIPE failed.sleep 10s.");
             ::close(pipeFd); ctx->reset(); sleep(10);
             continue;
@@ -69,7 +75,17 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
         ctx->reset(); ctx->pipeFd = pipeFd;
         Tcp::setSocketTimeout(pipeFd, 10);
 
-        FeedUtils::readMessage(actionVec, ctx);
+        int result = FeedUtils::readMessage(actionVec, ctx);
+        if(result <= 0) {
+            if(result == -1) {
+                LOG->warn("readMessage error, errno = %d, %s", errno, strerror(errno));
+            }
+            LOG->info("readMessage failed.");
+            ::close(pipeFd); ctx->reset(); sleep(10);
+            continue;
+        }
+
+
         action = actionVec[0];
 
         Tcp::setSocketTimeout(pipeFd); //取消超时
