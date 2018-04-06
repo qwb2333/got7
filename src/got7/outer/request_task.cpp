@@ -8,7 +8,7 @@ void OuterRequestCenterTask::readEvent(EpollRun *manager) {
         return;
     }
 
-    log->info("new accept, outerFd = %d, %s:%d", remoteInfo.fd, remoteInfo.ip.c_str(), (int)remoteInfo.port);
+    LOG->info("new accept, outerFd = %d, %s:%d", remoteInfo.fd, remoteInfo.ip.c_str(), (int)remoteInfo.port);
     int outerFd = remoteInfo.fd;
 
 
@@ -16,7 +16,7 @@ void OuterRequestCenterTask::readEvent(EpollRun *manager) {
     const int usedConsumerId = randInt(connectPool->getThreadSize());
 
     OuterCtx *ctx = &outerCtxArr[usedConsumerId];
-    log->info("send CONNECT. outerFd = %d", outerFd);
+    LOG->info("send CONNECT. outerFd = %d", outerFd);
 
     auto action = FeedUtils::createConnect(outerFd, innerProxyIp, innerProxyPort);
     FeedUtils::sendAction(action, ctx->pipeFd);
@@ -27,12 +27,12 @@ void OuterRequestCenterTask::readEvent(EpollRun *manager) {
 
 void OuterRequestCenterTask::destructEvent(EpollRun *manager) {
     // 本身这个fd是不应该被remove掉的,所以这种情况应该是不会出现的
-    log->warn("OuterRequestCenterTask DISCONNECT.");
+    LOG->warn("OuterRequestCenterTask DISCONNECT.");
     ::close(fd);
 }
 
 void OuterRequestHandleTask::constructEvent(EpollRun *manager) {
-    log->info("add map, outerFd = %d", fd);
+    LOG->info("add map, outerFd = %d", fd);
 
     TaskBase *taskBase = this;
     {
@@ -48,10 +48,10 @@ void OuterRequestHandleTask::readEvent(EpollRun *manager) {
     int len = (int)::read(fd, buff, Consts::PAGE_SIZE);
     if(len <= 0) {
         if(len == -1) {
-            log->error("read fd = %d, errno = %d, %s", ctx->pipeFd, errno, strerror(errno));
+            LOG->error("read fd = %d, errno = %d, %s", ctx->pipeFd, errno, strerror(errno));
         }
 
-        log->info("recv proxy DISCONNECT. send DISCONNECT. outerFd = %d", fd);
+        LOG->info("recv proxy DISCONNECT. send DISCONNECT. outerFd = %d", fd);
         action = FeedUtils::createDisconnect(fd);
         FeedUtils::sendAction(action, ctx->pipeFd);
 
@@ -59,7 +59,7 @@ void OuterRequestHandleTask::readEvent(EpollRun *manager) {
         return;
     }
 
-    log->info("recv proxy MESSAGE, len = %d; send MESSAGE. outerFd = %d", len, fd);
+    LOG->info("recv proxy MESSAGE, len = %d; send MESSAGE. outerFd = %d", len, fd);
     FeedUtils::createMessage(action, fd, buff, len);
     FeedUtils::sendAction(action, ctx->pipeFd);
 }

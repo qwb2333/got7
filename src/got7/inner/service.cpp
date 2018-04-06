@@ -7,7 +7,7 @@ void InnerService::setOuterServiceInfo(std::string outerIp, uint16_t outerPipePo
 }
 
 void InnerService::realRun(EpollRun &epollRun, int consumerId) {
-    log->setName(Utils::format("InnerService-%d", consumerId).c_str());
+    LOG->setName(Utils::format("InnerService-%d", consumerId).c_str());
 
     epollRun.setLogName(Utils::format("InnerServiceEpoll-%d", consumerId).c_str());
     epollRun.setLogLevel(LogLevel::WARN);
@@ -22,7 +22,7 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
     while(true) {
         // 会一直尝试连接,直到成功
         if(requireNewPipe(tcp, ctx, consumerId)) {
-            log->info("create new PIPE.");
+            LOG->info("create new PIPE.");
             innerPipeHandleTask = new InnerPipeHandleTask(ctx);
             epollRun.add(innerPipeHandleTask, TaskEvents::ReadEvent);
         }
@@ -34,7 +34,7 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
             // 有180秒没有进行过数据的交互,发送一个ACK包过去作为心跳包
             auto action = FeedUtils::createAck(consumerId);
             FeedUtils::sendAction(action, ctx->pipeFd);
-            log->info("send ACK. consumerId = %d", consumerId);
+            LOG->info("send ACK. consumerId = %d", consumerId);
         }
 
         if(ctx->pipeFd && nowTime - ctx->lastReadTime > 600) {
@@ -50,18 +50,18 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
         int pipeFd = tcp->get_fd();
 
         if(!tcp->connect(outerIp.c_str(), outerPipePort)) {
-            log->warn("connect OuterService failed. sleep 10s.");
+            LOG->warn("connect OuterService failed. sleep 10s.");
             ::close(pipeFd); ctx->reset(); sleep(10);
             continue;
         }
 
-        log->info("wait for PIPE.");
+        LOG->info("wait for PIPE.");
 
         std::vector<idl::FeedAction> actionVec;
         auto action = FeedUtils::createPipe(consumerId);
 
         if(!FeedUtils::sendAction(action, pipeFd)) {
-            log->warn("send PIPE failed.sleep 10s.");
+            LOG->warn("send PIPE failed.sleep 10s.");
             ::close(pipeFd); ctx->reset(); sleep(10);
             continue;
         }
@@ -77,7 +77,7 @@ bool InnerService::requireNewPipe(TcpPtr tcp, InnerCtx *ctx, int consumerId) {
         if(action.option() == idl::FeedOption::ACK) {
             return true; // 成功连接
         }
-        log->warn("get ACK failed.sleep 10s.");
+        LOG->warn("get ACK failed.sleep 10s.");
         ::close(pipeFd); ctx->reset(); sleep(10);
     }
     return false;

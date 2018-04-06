@@ -54,5 +54,5 @@ namespace qwb {
         static LoggerPtr createToFile(const char *file_name, const char *name = nullptr);
     };
 
-    extern thread_local LoggerPtr log;
+    extern thread_local LoggerPtr LOG;
 }

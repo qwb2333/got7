@@ -2,7 +2,7 @@
 using namespace got7;
 
 bool OuterService::prepare(uint16_t outerPipePort) {
-    log->setName("OuterService");
+    LOG->setName("OuterService");
 
     TcpPtr tcp = std::make_shared<Tcp>("0.0.0.0", outerPipePort);
     tcp->setLogName("OuterServiceTcp");
@@ -13,7 +13,7 @@ bool OuterService::prepare(uint16_t outerPipePort) {
     success &= tcp->bind();
     success &= tcp->listen();
     if(!success) {
-        log->error("socket, bind, listen failed. errno = %d, %s", errno, strerror(errno));
+        LOG->error("socket, bind, listen failed. errno = %d, %s", errno, strerror(errno));
         return false;
     }
 
@@ -21,8 +21,8 @@ bool OuterService::prepare(uint16_t outerPipePort) {
     auto *outerPipeCenterManager = new OuterPipeCenterManager(outerCtxArr, tcp, &acceptCount, usedConsumerId);
 
     std::thread th([outerPipeCenterManager]() {
-        log->setName("OuterPipeCenterManager");
-        log->info("ready for get PIPE.");
+        LOG->setName("OuterPipeCenterManager");
+        LOG->info("ready for get PIPE.");
 
         while(true) {
             outerPipeCenterManager->loopOnce();
@@ -34,7 +34,7 @@ bool OuterService::prepare(uint16_t outerPipePort) {
 }
 
 void OuterService::realRun(EpollRun &epollRun, int consumerId) {
-    log->setName(Utils::format("OuterService-%d", consumerId).c_str());
+    LOG->setName(Utils::format("OuterService-%d", consumerId).c_str());
 
     epollRun.setLogName(Utils::format("OuterServiceEpoll-%d", consumerId).c_str());
     epollRun.setLogLevel(LogLevel::WARN);
@@ -43,7 +43,7 @@ void OuterService::realRun(EpollRun &epollRun, int consumerId) {
     OuterCtx *ctx = &outerCtxArr[consumerId];
     while(true) {
         if(requireNewPipe(ctx)) {
-            log->info("get pipeId success. consumerId = %d", consumerId);
+            LOG->info("get pipeId success. consumerId = %d", consumerId);
 
             outerPipeHandleTask = new OuterPipeHandleTask(ctx);
             epollRun.add(outerPipeHandleTask, TaskEvents::ReadEvent);
@@ -61,7 +61,7 @@ void OuterService::realRun(EpollRun &epollRun, int consumerId) {
 
 bool OuterService::requireNewPipe(OuterCtx *ctx) {
     if(!ctx->pipeFd) {
-        log->info("wait for PIPE.");
+        LOG->info("wait for PIPE.");
         std::unique_lock<std::mutex> uniqueLock(ctx->mutex);
         ctx->condition.wait(uniqueLock, [&ctx]() {
             return ctx->pipeFd > 0;
@@ -82,7 +82,7 @@ bool OuterService::addRequestCenter(const char *innerProxyIp, uint16_t innerProx
     success &= tcp->bind();
     success &= tcp->listen();
     if(!success) {
-        log->error("socket, bind, listen failed. errno = %d, %s", errno, strerror(errno));
+        LOG->error("socket, bind, listen failed. errno = %d, %s", errno, strerror(errno));
         return false;
     }
 

@@ -11,7 +11,7 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
     int result = FeedUtils::readMessage(actionVec, ctx);
     if(result <= 0) {
         if(result == -1) {
-            log->error("read fd = %d, error = %d, %s", ctx->pipeFd, errno, strerror(errno));
+            LOG->error("read fd = %d, error = %d, %s", ctx->pipeFd, errno, strerror(errno));
         }
         manager->remove(this);
         return;
@@ -27,11 +27,11 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
             client->setLogLevel(LogLevel::ERROR);
 
             client->socket();
-            log->info("recv CONNECT. to %s:%d, outerFd = %d", info.ip().c_str(), info.port(), outerFd);
+            LOG->info("recv CONNECT. to %s:%d, outerFd = %d", info.ip().c_str(), info.port(), outerFd);
 
             int innerFd = client->get_fd();
             if(!client->connect(info.ip().c_str(), (uint16_t)info.port())) {
-                log->info("connect %s:%d failed.", info.ip().c_str(), info.port());
+                LOG->info("connect %s:%d failed.", info.ip().c_str(), info.port());
                 ::close(innerFd);
                 return;
             }
@@ -40,27 +40,27 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
             manager->add(innerRequestHandle, TaskEvents::ReadEvent);
 
         } else if(option == idl::FeedOption::DISCONNECT) {
-            log->info("recv DISCONNECT. outerFd = %d", action.fd());
+            LOG->info("recv DISCONNECT. outerFd = %d", action.fd());
             auto kv = ctx->fdMap.find(outerFd);
             if(kv == ctx->fdMap.end()) {
-                log->info("had DISCONNECT. outerFd = %d", action.fd());
+                LOG->info("had DISCONNECT. outerFd = %d", action.fd());
             } else {
                 manager->remove(kv->second.second);
             }
 
         } else if(option == idl::FeedOption::MESSAGE) {
-            log->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
+            LOG->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
             // 收到Message的消息, 直接写到proxy_port里去
             auto kv = ctx->fdMap.find(outerFd);
             if(kv == ctx->fdMap.end()) {
-                log->info("had DISCONNECT. outerFd = %d", action.fd());
+                LOG->info("had DISCONNECT. outerFd = %d", action.fd());
             } else {
                 int innerFd = kv->second.first;
                 ::write(innerFd, action.data().c_str(), action.data().length());
             }
         } else if(option == idl::FeedOption::ACK) {
             int consumerId = action.fd();
-            log->info("recv ACK, consumerId = %d", consumerId);
+            LOG->info("recv ACK, consumerId = %d", consumerId);
         }
     }
 }
@@ -76,6 +76,6 @@ void InnerPipeHandleTask::destructEvent(EpollRun *manager) {
     }
 
     ctx->reset(); //清空ctx
-    log->info("pipe DISCONNECT. pipeFd = %d", fd);
+    LOG->info("pipe DISCONNECT. pipeFd = %d", fd);
     ::close(fd);
 }

@@ -8,6 +8,7 @@
 #include <cstring>
 #include <algorithm>
 #include <fcntl.h>
-#include <zconf.h>
+#include <stdarg.h>
+#include <unistd.h>
 #include <unordered_map>
 #include <unordered_set>
