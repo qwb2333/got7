@@ -35,5 +35,5 @@ void ConnectPool::join() {
 
 void ConnectPool::realRun(EpollRun &epollRun, int id) {
     while(epollRun.loopOnce());
-    log->info("thread %d closed.", id);
+    LOG->info("thread %d closed.", id);
 }

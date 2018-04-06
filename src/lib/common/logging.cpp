@@ -247,4 +247,4 @@ LoggerPtr LoggerFactory::createToFile(const char *file_name, const char *name) {
     return LoggerPtr(new Logger(name, fd));
 }
 
-thread_local LoggerPtr qwb::log = LoggerFactory::createToStderr();
+thread_local LoggerPtr qwb::LOG = LoggerFactory::createToStderr();

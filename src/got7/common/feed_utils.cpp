@@ -76,14 +76,14 @@ int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *
 
             if(ctx->usedCount < Consts::PROTO_LEN_SIZE) {
                 // 这个情况非常奇葩, 应该不会出现才对
-                log->error("can't get protoSize, pipeFd = %d.", ctx->pipeFd);
+                LOG->error("can't get protoSize, pipeFd = %d.", ctx->pipeFd);
                 return 0; // 认为需要断开
             }
             ctx->protoSize = Utils::uCharsToUint16(ctx->buff);
         }
         if(ctx->protoSize > Consts::PAGE_SIZE + 128) {
             // 这个情况理论是不存在的, protoSize理论只会稍微大于pageSize,因为protobuf中除了data还带有一些其他数据
-            log->error("usedCount > pageSize. pipeFd = %d.", ctx->pipeFd);
+            LOG->error("usedCount > pageSize. pipeFd = %d.", ctx->pipeFd);
             return 0; // 认为需要断开
         }
 
@@ -96,7 +96,7 @@ int FeedUtils::readMessage(std::vector<idl::FeedAction> &refActionVec, CtxBase *
     while(ctx->usedCount - Consts::PROTO_LEN_SIZE < ctx->protoSize) {
         if(whileCount >= 3) {
             // 理论不会循环这么多次啊
-            log->error("whileCount > 3. pipeFd = %d, protoSize = %d, whileCount = %d",
+            LOG->error("whileCount > 3. pipeFd = %d, protoSize = %d, whileCount = %d",
                        ctx->pipeFd, ctx->protoSize, whileCount);
         }
         int len = (int)::read(ctx->pipeFd, ctx->buff + ctx->usedCount,

@@ -13,12 +13,12 @@ void OuterPipeCenterManager::loopOnce() {
     RemoteInfo remoteInfo;
     if(!tcp->accept(remoteInfo)) {
         // 断开连接了
-        log->info("OuterPipeCenterManager, CLOSED.");
+        LOG->info("OuterPipeCenterManager, CLOSED.");
         ::close(tcp->get_fd());
         return;
     }
 
-    log->info("new accept %s:%d, fd = %d", remoteInfo.ip.c_str(), (int)remoteInfo.port, remoteInfo.fd);
+    LOG->info("new accept %s:%d, fd = %d", remoteInfo.ip.c_str(), (int)remoteInfo.port, remoteInfo.fd);
 
     // 临时的ctx环境
     OuterCtx ctx(consumerId);
@@ -28,7 +28,7 @@ void OuterPipeCenterManager::loopOnce() {
 
     std::vector<idl::FeedAction> actionVec;
     if(FeedUtils::readMessage(actionVec, (CtxBase*)&ctx) <= 0) {
-        log->info("read PIPE failed.");
+        LOG->info("read PIPE failed.");
         ::close(ctx.pipeFd);
         return;
     }
@@ -42,21 +42,21 @@ void OuterPipeCenterManager::loopOnce() {
         int pipeFd = remoteInfo.fd;
         action = FeedUtils::createAck(consumerId);
         if(FeedUtils::sendAction(action, pipeFd) <= 0) {
-            log->info("send ACK failed. consumerId = %d", consumerId);
+            LOG->info("send ACK failed. consumerId = %d", consumerId);
             ::close(ctx.pipeFd);
             return;
         }
 
         OuterCtx &threadCtx = outerCtxArr[consumerId];
         std::unique_lock<std::mutex> uniqueLock(threadCtx.mutex);
-        log->info("send ACK success.ready to update ctx.");
+        LOG->info("send ACK success.ready to update ctx.");
 
         // 把临时的ctx复制到对应线程的ctx,并唤醒
         threadCtx.copyFrom(&ctx);
         uniqueLock.unlock();
         threadCtx.condition.notify_one();
     } else {
-        log->info("when accept, first message should PIPE. option = %d", (int)option);
+        LOG->info("when accept, first message should PIPE. option = %d", (int)option);
         ::close(ctx.pipeFd);
     }
 }
@@ -69,7 +69,7 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
 
     if(len <= 0) {
         if(len == -1) {
-            log->error("read fd = %d, errno = %d, %s", pipeFd, errno, strerror(errno));
+            LOG->error("read fd = %d, errno = %d, %s", pipeFd, errno, strerror(errno));
         }
         manager->remove(this);
         return;
@@ -81,19 +81,19 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
 
         if(option == idl::FeedOption::ACK) {
             int consumerId = action.fd();
-            log->info("recv ACK. consumerId = %d", consumerId);
+            LOG->info("recv ACK. consumerId = %d", consumerId);
             if(ctx->consumerId != consumerId) {
-                log->warn("consumerId != this->consumerId.");
+                LOG->warn("consumerId != this->consumerId.");
             }
             action = FeedUtils::createAck(consumerId);
             FeedUtils::sendAction(action, pipeFd);
-            log->info("send ACK. consumerId = %d", consumerId);
+            LOG->info("send ACK. consumerId = %d", consumerId);
         } else if(option == idl::FeedOption::PIPE) {
             // 理论这里应该是不会收到PIPE的
-            log->warn("It shoud not get PIPE.");
+            LOG->warn("It shoud not get PIPE.");
         } else {
             if(!action.has_fd()) {
-                log->warn("It should have fd.");
+                LOG->warn("It should have fd.");
                 return;
             }
 
@@ -102,7 +102,7 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
                 AutoRead lock(&ctx->rwLock);
                 auto iter = ctx->fdMap.find(outerFd);
                 if(iter == ctx->fdMap.end()) {
-                    log->info("had DISCONNECT. outerFd = %d", outerFd);
+                    LOG->info("had DISCONNECT. outerFd = %d", outerFd);
                     return;
                 }
                 task = iter->second;
@@ -110,10 +110,10 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
 
 
             if(option == idl::FeedOption::DISCONNECT) {
-                log->info("recv DISCONNECT. outerFd = %d", outerFd);
+                LOG->info("recv DISCONNECT. outerFd = %d", outerFd);
                 manager->remove(task);
             } else if(option == idl::FeedOption::MESSAGE) {
-                log->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
+                LOG->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
                 ::write(outerFd, action.data().c_str(), action.data().length());
             }
         }
@@ -135,6 +135,6 @@ void OuterPipeHandleTask::destructEvent(EpollRun *manager) {
     }
 
     ctx->reset(); //清空ctx
-    log->info("pipe DISCONNECT. pipeFd = %d", fd);
+    LOG->info("pipe DISCONNECT. pipeFd = %d", fd);
     ::close(fd);
 }
