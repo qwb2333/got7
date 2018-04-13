@@ -12,7 +12,7 @@ namespace qwb {
         virtual ~EpollRun();
         void init(ConnectPool *connectPool, int epollSize, int consumerId);
         bool add(TaskBase *task, TaskEvents taskEvents);
-        bool remove(TaskBase *task);
+        bool remove(int fd);
         bool loopOnce();
 
         void setLogName(const char *name) {
@@ -40,6 +40,7 @@ namespace qwb {
         ConnectPool *connectPool;
 
         std::vector<epoll_event> activeEvents;
+        std::map<int, TaskBase*> fdMap;
         LoggerPtr log;
     };
 }

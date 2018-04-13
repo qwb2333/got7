@@ -55,7 +55,7 @@ void OuterService::realRun(EpollRun &epollRun, int consumerId) {
         if(ctx->pipeFd && nowTime - ctx->lastReadTime > 600) {
             // 如果过去10分钟了,还是没有收到任何数据,说明这个pipeFd已经挂掉了,释放掉
             LOG->info("lastReadTime over 600s. close innerPipeHandleTask.");
-            epollRun.remove(outerPipeHandleTask);
+            epollRun.remove(outerPipeHandleTask->fd);
         }
     }
 }
@@ -86,6 +86,7 @@ bool OuterService::addRequestCenter(const char *innerProxyIp, uint16_t innerProx
         LOG->error("socket, bind, listen failed. errno = %d, %s", errno, strerror(errno));
         return false;
     }
+    tcp->setNoBlock();
 
     const int usedConsumerId = (acceptCount++) % threadSize;
     TaskBase *outerRequestCenterTask = new OuterRequestCenterTask(outerCtxArr,

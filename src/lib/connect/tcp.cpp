@@ -78,9 +78,7 @@ bool Tcp::listen(int maxCount) {
 
 bool Tcp::connect(const char *ip, uint16_t port) {
     createSockAddr(remote_addr, ip, port);
-    Tcp::setSocketTimeout(fd, 5); //设置超时
     int result = ::connect(fd, (sockaddr*)&remote_addr, sizeof(remote_addr));
-    Tcp::setSocketTimeout(fd); //取消超时
     if(result < 0) {
         log->error("create socket error, errno = %d, %s", errno, strerror(errno));
         return false;

@@ -4,7 +4,7 @@ using namespace got7;
 void OuterRequestCenterTask::readEvent(EpollRun *manager) {
     RemoteInfo remoteInfo;
     if(!tcp->accept(remoteInfo)) {
-        manager->remove(this);
+        manager->remove(fd);
         return;
     }
 
@@ -25,13 +25,13 @@ void OuterRequestCenterTask::readEvent(EpollRun *manager) {
     connectPool->getEpollRun(usedConsumerId).add(outerRequestHandleTask, TaskEvents::ReadEvent);
 }
 
-void OuterRequestCenterTask::destructEvent(EpollRun *manager) {
+void OuterRequestCenterTask::removeEvent(EpollRun *manager) {
     // 本身这个fd是不应该被remove掉的,所以这种情况应该是不会出现的
     LOG->warn("OuterRequestCenterTask DISCONNECT.");
     ::close(fd);
 }
 
-void OuterRequestHandleTask::constructEvent(EpollRun *manager) {
+void OuterRequestHandleTask::addEvent(EpollRun *manager) {
     LOG->info("add map, outerFd = %d", fd);
 
     TaskBase *taskBase = this;
@@ -55,7 +55,7 @@ void OuterRequestHandleTask::readEvent(EpollRun *manager) {
         action = FeedUtils::createDisconnect(fd);
         FeedUtils::sendAction(action, ctx->pipeFd);
 
-        manager->remove(this);
+        manager->remove(fd);
         return;
     }
 
@@ -64,7 +64,7 @@ void OuterRequestHandleTask::readEvent(EpollRun *manager) {
     FeedUtils::sendAction(action, ctx->pipeFd);
 }
 
-void OuterRequestHandleTask::destructEvent(EpollRun *manager) {
+void OuterRequestHandleTask::removeEvent(EpollRun *manager) {
     if(this->hadLocked) {
         ctx->fdMap.erase(fd);
     } else {
@@ -73,4 +73,5 @@ void OuterRequestHandleTask::destructEvent(EpollRun *manager) {
     }
     LOG->info("OuterRequestHandleTask closed. fd = %d", fd);
     ::close(fd);
+    delete this;
 }

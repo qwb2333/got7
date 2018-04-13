@@ -19,11 +19,11 @@ namespace qwb {
 
         }
 
-        virtual void constructEvent(EpollRun* manager) {
+        virtual void addEvent(EpollRun* manager) {
 
         }
 
-        virtual void destructEvent(EpollRun* manager) {
+        virtual void removeEvent(EpollRun* manager) {
 
         }
     };

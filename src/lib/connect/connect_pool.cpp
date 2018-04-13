@@ -6,9 +6,9 @@ void ConnectPool::add(TaskBase *task, TaskEvents taskEvents) {
     epollRunPool[id].add(task, taskEvents);
 }
 
-void ConnectPool::remove(TaskBase *task) {
-    int id = Utils::hash(task->fd, threadSize);
-    epollRunPool[id].remove(task);
+void ConnectPool::remove(int fd) {
+    int id = Utils::hash(fd, threadSize);
+    epollRunPool[id].remove(fd);
 }
 
 ConnectPool::ConnectPool(int threadSize, int epollSize) {

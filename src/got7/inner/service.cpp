@@ -23,6 +23,7 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
         // 会一直尝试连接,直到成功
         if(requireNewPipe(tcp, ctx, consumerId)) {
             LOG->info("create new PIPE.");
+            tcp->setNoBlock();
             innerPipeHandleTask = new InnerPipeHandleTask(ctx);
             epollRun.add(innerPipeHandleTask, TaskEvents::ReadEvent);
         }
@@ -36,7 +37,7 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
             if(FeedUtils::sendAction(action, ctx->pipeFd) <= 0) {
                 // 这个pipdFd不行了
                 LOG->warn("send ACK failed. consumerId = %d", consumerId);
-                this->remove(innerPipeHandleTask);
+                epollRun.remove(innerPipeHandleTask->fd);
             } else {
                 LOG->info("send ACK. consumerId = %d", consumerId);
             }
@@ -45,7 +46,7 @@ void InnerService::realRun(EpollRun &epollRun, int consumerId) {
         if(ctx->pipeFd && nowTime - ctx->lastReadTime > 600) {
             // 如果过去10分钟了,还是没有任何数据,说明这个pipeFd已经挂掉了,释放掉
             LOG->info("lastReadTime over 600s. close innerPipeHandleTask.");
-            epollRun.remove(innerPipeHandleTask);
+            epollRun.remove(innerPipeHandleTask->fd);
         }
     }
 }

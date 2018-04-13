@@ -72,7 +72,7 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
             LOG->error("read fd = %d, errno = %d, %s", pipeFd, errno, strerror(errno));
         }
         LOG->info("recv pipe DISCONNECT. pipeFd = %d", pipeFd);
-        manager->remove(this);
+        manager->remove(fd);
         return;
     }
 
@@ -112,21 +112,21 @@ void OuterPipeHandleTask::readEvent(EpollRun *manager) {
 
             if(option == idl::FeedOption::DISCONNECT) {
                 LOG->info("recv DISCONNECT. outerFd = %d", outerFd);
-                manager->remove(task);
+                manager->remove(fd);
             } else if(option == idl::FeedOption::MESSAGE) {
                 LOG->info("recv MESSAGE, outerFd = %d, len = %d", outerFd, action.data().length());
                 len = (int)Tcp::write(outerFd, (void*)action.data().c_str(), (unsigned)action.data().length());
                 if(len <= 0) {
                     // 这个时候outerFd可能已经关闭了,直接删掉
                     LOG->info("write failed. outerFd = %d", outerFd);
-                    manager->remove(task);
+                    manager->remove(fd);
                 }
             }
         }
     }
 }
 
-void OuterPipeHandleTask::destructEvent(EpollRun *manager) {
+void OuterPipeHandleTask::removeEvent(EpollRun *manager) {
     {
         AutoWrite lock(&ctx->rwLock);
 
@@ -136,7 +136,7 @@ void OuterPipeHandleTask::destructEvent(EpollRun *manager) {
             OuterRequestHandleTask *task = (OuterRequestHandleTask*)iter->second;
 
             task->hadLocked = true;
-            manager->remove(task);
+            manager->remove(fd);
 
             iter = ctx->fdMap.begin();
         }
@@ -145,4 +145,5 @@ void OuterPipeHandleTask::destructEvent(EpollRun *manager) {
     ctx->reset(); //清空ctx
     LOG->info("pipe DISCONNECT. pipeFd = %d", fd);
     ::close(fd);
+    delete this;
 }

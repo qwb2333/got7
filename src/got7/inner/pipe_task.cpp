@@ -14,7 +14,7 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
             LOG->error("read fd = %d, error = %d, %s", ctx->pipeFd, errno, strerror(errno));
         }
         LOG->info("recv pipe DISCONNECT. pipeFd = %d", fd);
-        manager->remove(this);
+        manager->remove(fd);
         return;
     }
 
@@ -28,6 +28,7 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
             client->setLogLevel(LogLevel::ERROR);
 
             client->socket();
+
             LOG->info("recv CONNECT. to %s:%d, outerFd = %d", info.ip().c_str(), info.port(), outerFd);
 
             int innerFd = client->get_fd();
@@ -37,6 +38,7 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
                 continue;
             }
 
+            client->setNoBlock();
             TaskBase *innerRequestHandle = new InnerRequestHandleTask(ctx, innerFd, outerFd);
             manager->add(innerRequestHandle, TaskEvents::ReadEvent);
 
@@ -46,7 +48,7 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
             if(kv == ctx->fdMap.end()) {
                 LOG->info("had DISCONNECT. outerFd = %d", action.fd());
             } else {
-                manager->remove(kv->second.second);
+                manager->remove(kv->second);
             }
 
         } else if(option == idl::FeedOption::MESSAGE) {
@@ -56,12 +58,12 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
             if(kv == ctx->fdMap.end()) {
                 LOG->info("had DISCONNECT. outerFd = %d", action.fd());
             } else {
-                int innerFd = kv->second.first;
+                int innerFd = kv->second;
                 int len = (int)Tcp::write(innerFd, (void*)action.data().c_str(), (unsigned)action.data().length());
                 if(len <= 0) {
                     // 这个时候outerFd可能已经关闭了,直接删掉
                     LOG->info("write failed. outerFd = %d", outerFd);
-                    manager->remove(kv->second.second);
+                    manager->remove(kv->second);
                 }
             }
         } else if(option == idl::FeedOption::ACK) {
@@ -71,16 +73,18 @@ void InnerPipeHandleTask::readEvent(EpollRun *manager) {
     }
 }
 
-void InnerPipeHandleTask::destructEvent(EpollRun *manager) {
+void InnerPipeHandleTask::removeEvent(EpollRun *manager) {
     // 释放ctx里所有的request连接
     auto iter = ctx->fdMap.begin();
     while(iter != ctx->fdMap.end()) {
-        TaskBase *task = iter->second.second;
-        manager->remove(task);
+        int fd = iter->second;
+        manager->remove(fd);
 
         iter = ctx->fdMap.begin();
     }
 
     ctx->reset(); //清空ctx
     ::close(fd);
+
+    delete this;
 }

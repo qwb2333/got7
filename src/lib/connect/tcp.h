@@ -1,5 +1,6 @@
 #pragma once
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "lib/common/base.h"
@@ -22,6 +23,13 @@ namespace qwb {
         void close();
         bool accept(RemoteInfo &info);
         bool listen(int maxCount = 1024);
+        void setNoBlock() {
+            fcntl(fd, F_SETFL, O_NONBLOCK);
+        }
+        void setNoNagle() {
+            const int noDelay = 1;
+            setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,(void*)&noDelay, sizeof(int));
+        }
 
         int get_fd() const {
             return fd;

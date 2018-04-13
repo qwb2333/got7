@@ -137,6 +137,7 @@ public:
         LOG->setName("InnerMainHandle");
 
         tcp->socket();
+        tcp->setNoBlock();
         tcp->bind();
         tcp->connect("127.0.0.1", outerMainPort);
         // 让OuterMainService获得pipe用的fd

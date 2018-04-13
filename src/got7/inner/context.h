@@ -6,7 +6,7 @@ using namespace got7;
 namespace got7 {
     class InnerCtx: public CtxBase {
     public:
-        std::map<int, std::pair<int, TaskBase*>> fdMap;
+        std::map<int, int> fdMap;
         InnerCtx(int consumerId = 0): CtxBase(consumerId){ }
         ~InnerCtx() { }
 

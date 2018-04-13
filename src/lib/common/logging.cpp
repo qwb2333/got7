@@ -240,7 +240,7 @@ LoggerPtr LoggerFactory::createToFile(const char *file_name, const char *name) {
     if(name == nullptr) {
         name = "Main";
     }
-    int fd = open(file_name, O_WRONLY|O_APPEND|O_CREAT|O_CLOEXEC);
+    int fd = open(file_name, O_WRONLY|O_APPEND|O_CREAT|O_CLOEXEC, 0744);
     if(fd < 0) {
         fprintf(stderr, "[LoggerFactory::createToFile]open %s failed.", file_name);
     }

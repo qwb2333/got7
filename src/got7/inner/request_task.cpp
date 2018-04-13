@@ -22,7 +22,7 @@ void InnerRequestHandleTask::readEvent(EpollRun *manager) {
         action = FeedUtils::createDisconnect(outerFd);
         FeedUtils::sendAction(action, ctx->pipeFd);
 
-        manager->remove(this);
+        manager->remove(fd);
         return;
     }
 
@@ -32,16 +32,16 @@ void InnerRequestHandleTask::readEvent(EpollRun *manager) {
     usleep(100);
 }
 
-void InnerRequestHandleTask::constructEvent(EpollRun *manager) {
+void InnerRequestHandleTask::addEvent(EpollRun *manager) {
     LOG->info("add map, innerFd = %d, outerFd = %d", innerFd, outerFd);
 
     TaskBase *taskBase = this;
-    std::pair<int, TaskBase*> value(innerFd, taskBase);
-    ctx->fdMap.insert(std::make_pair(outerFd, value));
+    ctx->fdMap.insert(std::make_pair(outerFd, innerFd));
 }
 
-void InnerRequestHandleTask::destructEvent(EpollRun *manager) {
+void InnerRequestHandleTask::removeEvent(EpollRun *manager) {
     ctx->fdMap.erase(outerFd);
     LOG->info("InnerRequestHandleTask closed. fd = %d", fd);
     ::close(fd);
+    delete this;
 }

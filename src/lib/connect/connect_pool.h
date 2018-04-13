@@ -10,7 +10,7 @@ namespace qwb {
         virtual ~ConnectPool() = default;
 
         void add(TaskBase *task, TaskEvents taskEvents);
-        void remove(TaskBase *task);
+        void remove(int fd);
         void join();
 
         EpollRun &getEpollRun(int consumerId) {

@@ -4,6 +4,7 @@ using namespace qwb;
 EpollRun::~EpollRun() { }
 
 void EpollRun::init(ConnectPool *connectPool, int epollSize, int consumerId) {
+    fdMap.clear();
     this->epollSize = epollSize;
     this->consumerId = consumerId;
     this->connectPool = connectPool;
@@ -23,21 +24,35 @@ bool EpollRun::add(TaskBase *task, TaskEvents taskEvents) {
     event.data.ptr = task;
     event.events = taskEvents;
 
-    fcntl(task->fd, F_SETFL, O_NONBLOCK);
     log->info("epoll add task: %d", task->fd);
-    int r = epoll_ctl(this->epollFd, EPOLL_CTL_ADD, task->fd, &event);
 
+    auto iter = fdMap.find(task->fd);
+    if(iter != fdMap.end()) {
+        log->warn("fd = %d already in epoll, ignored", task->fd);
+        return true;
+    }
+
+    int r = epoll_ctl(this->epollFd, EPOLL_CTL_ADD, task->fd, &event);
     if(r < 0) {
         log->error("epoll add error %d %s", errno, strerror(errno));
         return false;
     }
-    task->constructEvent(this);
+    fdMap[task->fd] = task;
+    task->addEvent(this);
     return true;
 }
 
-bool EpollRun::remove(TaskBase *task) {
-    log->info("epoll remove task: %d", task->fd);
-    int r = epoll_ctl(this->epollFd, EPOLL_CTL_DEL, task->fd, NULL);
+bool EpollRun::remove(int fd) {
+    log->info("epoll remove task: %d", fd);
+
+    auto iter = fdMap.find(fd);
+    if(iter == fdMap.end()) {
+        log->info("fd = %d had removed.", fd);
+        return true;
+    }
+    TaskBase *task = iter->second;
+
+    int r = epoll_ctl(this->epollFd, EPOLL_CTL_DEL, fd, NULL);
 
     if(r < 0) {
         // 说明这个task已经被删掉了,就不用管它
@@ -45,8 +60,7 @@ bool EpollRun::remove(TaskBase *task) {
         return false;
     }
 
-    task->destructEvent(this);
-    delete task;
+    task->removeEvent(this);
     return true;
 }
 
@@ -76,7 +90,7 @@ bool EpollRun::loopOnce() {
         if(events & EPOLLHUP) {
             success = true;
             log->info("fd: %d, EPOLLHUP", task->fd);
-            remove(task);
+            remove(task->fd);
         }
 
         if(!success) {

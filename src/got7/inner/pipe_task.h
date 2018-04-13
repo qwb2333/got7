@@ -14,7 +14,7 @@ namespace got7 {
     public:
         InnerPipeHandleTask(InnerCtx *ctx);
         void readEvent(EpollRun* manager) override;
-        void destructEvent(EpollRun *manager) override;
+        void removeEvent(EpollRun *manager) override;
 
     private:
         InnerCtx *ctx;

@@ -22,7 +22,7 @@ namespace got7 {
             this->innerProxyPort = innerProxyPort;
         }
         void readEvent(EpollRun *manager) override;
-        void destructEvent(EpollRun *manager) override;
+        void removeEvent(EpollRun *manager) override;
 
     private:
         TcpPtr tcp;
@@ -45,9 +45,9 @@ namespace got7 {
             this->fd = outerFd;
             this->hadLocked = false;
         }
-        void constructEvent(EpollRun *manager) override;
+        void addEvent(EpollRun *manager) override;
         void readEvent(EpollRun *manager) override;
-        void destructEvent(EpollRun *manager) override;
+        void removeEvent(EpollRun *manager) override;
 
     private:
         OuterCtx *ctx;

@@ -1,3 +1,5 @@
 .idea/
 *.swp
 cmake-build-debug/
+build/
+run/

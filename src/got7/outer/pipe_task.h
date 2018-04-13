@@ -33,7 +33,7 @@ namespace got7 {
             this->fd = ctx->pipeFd;
         }
         void readEvent(EpollRun* manager) override;
-        void destructEvent(EpollRun *manager) override;
+        void removeEvent(EpollRun *manager) override;
 
     private:
         OuterCtx *ctx;
